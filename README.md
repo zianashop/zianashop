@@ -1,16 +1,21 @@
-## Hi there 👋
+# LaibaShop
 
-<!--
-**zianashop/zianashop** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+## Run locally
 
-Here are some ideas to get you started:
+```bash
+python3 -m http.server 8000
+```
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+Open `http://localhost:8000`.
+
+## Supabase setup
+
+1. Open Supabase SQL Editor.
+2. Run the complete `supabase-schema.sql` file.
+3. In Authentication, enable Email provider and create the first admin user.
+4. Copy that user's UUID and run the admin promotion query at the bottom of `supabase-schema.sql`.
+5. Keep the Project URL and publishable key in `supabase-config.js`.
+
+The app loads the public product catalog and store settings from Supabase when the schema is available. It keeps a local fallback so the storefront can still open when Supabase is temporarily unavailable.
+
+Never put the Supabase `service_role` key in this repository or in browser code.
