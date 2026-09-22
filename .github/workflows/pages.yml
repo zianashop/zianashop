@@ -1,4 +1,4 @@
-name: Deploy LaibaShop to GitHub Pages
+name: Deploy Ziyana Shop to GitHub Pages
 
 on:
   push:

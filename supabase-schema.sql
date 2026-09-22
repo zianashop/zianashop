@@ -1,4 +1,4 @@
--- ZiyanaShop Supabase schema
+-- Ziyana Shop Supabase schema
 -- Run this entire file in Supabase SQL Editor.
 
 create extension if not exists pgcrypto;

@@ -1,4 +1,4 @@
-# ZiyanaShop
+# Ziyana Shop
 
 ## Run locally
 
