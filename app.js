@@ -320,6 +320,7 @@ function saveManagedCategoryForm(form) {
   const subcategoryList = [...form.querySelectorAll('[data-subcategory-row]')].map(row => ({
     id: row.dataset.subcategoryId || `sub-${Date.now()}`,
     name: row.querySelector('.category-subcategory-content > b')?.textContent?.trim() || '',
+    image: row.querySelector('[data-subcategory-image-input]')?.value?.trim() || '',
     productIds: [...row.querySelectorAll('[data-subcategory-product]:checked')].map(input => Number(input.value))
   })).filter(item => item.name);
 
@@ -390,12 +391,14 @@ function renderCategorySubcategoryList(category) {
 
   list.innerHTML = (category?.subcategories || []).map((item, index) => {
     const name = typeof item === 'string' ? item : item?.name || '';
+    const image = typeof item === 'object' ? item?.image || '' : '';
     const id = typeof item === 'object' ? (item.id || `sub-${index}`) : `sub-${index}`;
     const selected = new Set((typeof item === 'object' && Array.isArray(item?.productIds) ? item.productIds : []).map(Number));
 
-    return `<div class="admin-list-row category-subcategory-row" data-subcategory-row="${index}" data-subcategory-id="${escapeHtml(id)}">
+    return `<div class="admin-list-row category-subcategory-row" data-subcategory-row="${index}" data-subcategory-id="${escapeHtml(id)}" data-subcategory-image="${escapeHtml(image)}">
       <div class="category-subcategory-content">
         <b>${escapeHtml(name)}</b>
+        <input type="url" data-subcategory-image-input value="${escapeHtml(image)}" placeholder="Subcategory image URL (optional)">
         <div class="campaign-picker">
           ${products.map(product => `<label><input type="checkbox" data-subcategory-product="${index}" value="${product.id}" ${selected.has(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}
         </div>
@@ -506,22 +509,102 @@ function renderCategories() {
   const grid = $('#categoryGrid');
   if (!grid) return;
 
-  grid.innerHTML = getActiveCategories().map(category => {
-    const subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
-    return `<div class="category-menu-item">
+  grid.innerHTML = getActiveCategories().map(category => `
+    <div class="category-menu-item" data-category-hover="${escapeHtml(category.name)}">
       <a class="category-card" href="#category-${escapeHtml(category.id)}" data-category="${escapeHtml(category.name)}">
         <img src="${escapeHtml(category.image)}" alt="${escapeHtml(category.name)}" loading="lazy">
         <b>${escapeHtml(category.name)}</b>
       </a>
-      ${subcategories.length ? `<div class="category-hover-menu">
-        ${subcategories.map(item => {
-          const name = typeof item === 'string' ? item : item?.name || '';
-          return `<button type="button" data-category-subcategory="${escapeHtml(name)}" data-category-id="${escapeHtml(category.id)}">${escapeHtml(name)}</button>`;
-        }).join('')}
-      </div>` : ''}
-    </div>`;
-  }).join('');
+    </div>
+  `).join('');
+
+  if (!document.querySelector('#categoryFloatingSubmenu')) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="categoryFloatingSubmenu" class="category-floating-submenu" hidden></div>');
+  }
 }
+
+function openCategoryFloatingSubmenu(item) {
+  const menu = $('#categoryFloatingSubmenu');
+  if (!menu) return;
+
+  const category = getCategoryByName(item.dataset.categoryHover);
+  const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
+  if (!subcategories.length) {
+    menu.hidden = true;
+    item.classList.remove('is-submenu-open');
+    return;
+  }
+
+  menu.innerHTML = subcategories.map(sub => {
+    const name = typeof sub === 'string' ? sub : sub?.name || '';
+    const image = typeof sub === 'object' ? sub?.image || '' : '';
+    return `<button type="button" data-category-subcategory="${escapeHtml(name)}" data-category-id="${escapeHtml(category.id)}">
+      ${image ? `<img src="${escapeHtml(image)}" alt="">` : '<span class="subcategory-dot"></span>'}
+      <span>${escapeHtml(name)}</span>
+    </button>`;
+  }).join('');
+
+  const rect = item.getBoundingClientRect();
+  menu.hidden = false;
+
+  requestAnimationFrame(() => {
+    const width = menu.offsetWidth;
+    const left = Math.max(10, Math.min(rect.left, window.innerWidth - width - 10));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.min(rect.bottom + 8, window.innerHeight - menu.offsetHeight - 10)}px`;
+  });
+
+  item.classList.add('is-submenu-open');
+}
+
+function closeCategoryFloatingSubmenu() {
+  const menu = $('#categoryFloatingSubmenu');
+  if (menu) menu.hidden = true;
+  document.querySelectorAll('.category-menu-item.is-submenu-open').forEach(item => item.classList.remove('is-submenu-open'));
+}
+
+if (!window.__categoryHoverBound) {
+  window.__categoryHoverBound = true;
+  let hoverTimer;
+
+  document.addEventListener('mouseover', event => {
+    const item = event.target.closest('[data-category-hover]');
+    if (!item) return;
+    clearTimeout(hoverTimer);
+    openCategoryFloatingSubmenu(item);
+  });
+
+  document.addEventListener('mouseout', event => {
+    const item = event.target.closest('[data-category-hover]');
+    const menu = $('#categoryFloatingSubmenu');
+    if (!item || !menu) return;
+
+    if (menu.contains(event.relatedTarget)) return;
+
+    hoverTimer = setTimeout(() => {
+      if (!menu.matches(':hover') && !document.querySelector('[data-category-hover]:hover')) {
+        closeCategoryFloatingSubmenu();
+      }
+    }, 120);
+  });
+
+  document.addEventListener('mouseover', event => {
+    if (!event.target.closest('#categoryFloatingSubmenu')) return;
+    clearTimeout(hoverTimer);
+  });
+
+  document.addEventListener('mouseout', event => {
+    if (!event.target.closest('#categoryFloatingSubmenu')) return;
+    if (event.relatedTarget?.closest?.('[data-category-hover]')) return;
+    hoverTimer = setTimeout(closeCategoryFloatingSubmenu, 150);
+  });
+
+  window.addEventListener('scroll', () => {
+    const openItem = document.querySelector('[data-category-hover].is-submenu-open');
+    if (openItem && !$('#categoryFloatingSubmenu')?.hidden) openCategoryFloatingSubmenu(openItem);
+  }, {passive:true});
+}
+
 function renderCampaignBanner() { const title = $('#campaignBannerTitle'); const subtitle = $('#campaignBannerSubtitle'); const text = $('#campaignBannerText'); const image = $('#campaignBannerImage'); const discount = $('#campaignBannerDiscount'); if (title) title.textContent = campaignSettings.title; if (subtitle) subtitle.textContent = campaignSettings.subtitle; if (text) text.textContent = campaignSettings.text; if (image) { image.src = campaignSettings.image; image.alt = campaignSettings.title; } if (discount) discount.textContent = campaignSettings.discount; }
 function renderHero() { const tagTop = $('#heroTagTop'); const tagBottom = $('#heroTagBottom'); const image = $('#heroBannerImage'); const cardTitle = $('#heroCardTitle'); const cardOffer = $('#heroCardOffer'); if (tagTop) tagTop.textContent = heroSettings.tagTop; if (tagBottom) tagBottom.textContent = heroSettings.tagBottom; if (image) { image.src = heroSettings.image; image.alt = heroSettings.cardTitle; } if (cardTitle) cardTitle.textContent = heroSettings.cardTitle; if (cardOffer) cardOffer.textContent = heroSettings.cardOffer; }
 function renderAds() { $('#adGrid').innerHTML = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date())).map(ad => `<article class="ad-card" data-ad-view="${ad.id}"><img src="${escapeHtml(ad.image)}" alt="${escapeHtml(ad.title)}" loading="lazy"><span><small>ZIYANA SHOP CAMPAIGN</small><b>${escapeHtml(ad.title)}</b><em>${escapeHtml(ad.text)}</em></span><strong>↗</strong></article>`).join(''); }
@@ -662,7 +745,7 @@ function renderAdmin() {
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>New arrival</h3><form id="campaignForm" class="admin-form"><input name="title" value="${escapeHtml(campaignSettings.title)}" placeholder="Banner title" required><input name="subtitle" value="${escapeHtml(campaignSettings.subtitle)}" placeholder="Banner subtitle" required><textarea name="text" placeholder="Banner description" required>${escapeHtml(campaignSettings.text)}</textarea><input name="image" type="url" value="${escapeHtml(campaignSettings.image)}" placeholder="Banner image URL" required><input name="discount" value="${escapeHtml(campaignSettings.discount)}" placeholder="Discount badge, e.g. 50%" required><fieldset class="campaign-picker"><legend>New arrival products tick করুন (সর্বোচ্চ ৫টি)</legend>${products.map(product => `<label><input type="checkbox" name="curatedProducts" value="${product.id}" ${(campaignSettings.productIds || []).includes(product.id) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">New arrival save করুন</button></form></section>`);
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Hero banner</h3><form id="heroForm" class="admin-form"><input name="tagTop" value="${escapeHtml(heroSettings.tagTop)}" placeholder="Top label" required><input name="tagBottom" value="${escapeHtml(heroSettings.tagBottom)}" placeholder="Bottom label" required><input name="image" type="url" value="${escapeHtml(heroSettings.image)}" placeholder="Hero image URL" required><input name="cardTitle" value="${escapeHtml(heroSettings.cardTitle)}" placeholder="Floating card title" required><input name="cardOffer" value="${escapeHtml(heroSettings.cardOffer)}" placeholder="Offer text" required><button class="primary-button" type="submit">Hero banner save করুন</button></form></section>`);
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Ziyana Shop products</h3><form id="mallForm" class="admin-form"><p class="form-help">Ziyana Shop-এ দেখানোর products tick করুন। কোনোটি select না করলে Fashion ও Beauty-এর products দেখাবে।</p><fieldset class="campaign-picker"><legend>Ziyana Shop product selection</legend>${products.map(product => `<label><input type="checkbox" name="mallProducts" value="${product.id}" ${(mallSettings.productIds || []).map(Number).includes(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">Ziyana Shop update করুন</button></form></section>`);
-  $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Category Management</h3><div class="category-admin-tools"><form id="categoryForm" class="admin-form"><input type="hidden" name="id"><input name="name" placeholder="Category name" required><input name="image" type="url" placeholder="Category image URL"><label><input type="checkbox" name="active" checked> Active category</label><div class="category-product-picker"><b>এই category-তে products</b><div id="categoryProductPicker"></div></div><div class="category-subcategory-tools"><b>Subcategories</b><div id="categorySubcategoryList"></div><div class="two-fields"><input name="newSubcategory" placeholder="নতুন subcategory"><button class="outline-button" type="button" data-add-subcategory>Add subcategory</button></div></div><button class="primary-button" type="submit">Category save করুন</button></form><div class="admin-list" id="adminCategoryList">${(Array.isArray(categories) ? categories : defaultCategories).map(category => `<div class="admin-list-row"><span><b>${escapeHtml(category.name)}</b><small>${(category.subcategories || []).length} subcategory · ${Array.isArray(category.productIds) ? category.productIds.length : 0} products · ${category.active === false ? 'Hidden' : 'Active'}</small></span><span class="row-actions"><button class="outline-button" data-edit-category="${escapeHtml(category.id)}">Edit</button><button class="outline-button danger-button" data-delete-category="${escapeHtml(category.id)}">Remove</button></span></div>`).join('')}</div></div></section>`);
+  $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Category Management</h3><div class="category-admin-tools"><form id="categoryForm" class="admin-form"><input type="hidden" name="id"><input name="name" placeholder="Category name" required><input name="image" type="url" placeholder="Category image URL"><label><input type="checkbox" name="active" checked> Active category</label><div class="category-product-picker"><b>এই category-তে products</b><div id="categoryProductPicker"></div></div><div class="category-subcategory-tools"><b>Subcategories</b><div id="categorySubcategoryList"></div><div class="two-fields"><input name="newSubcategory" placeholder="নতুন subcategory"><input name="newSubcategoryImage" type="url" placeholder="Subcategory image URL (optional)"></div><button class="outline-button" type="button" data-add-subcategory>Add subcategory</button></div><button class="primary-button" type="submit">Category save করুন</button></form><div class="admin-list" id="adminCategoryList">${(Array.isArray(categories) ? categories : defaultCategories).map(category => `<div class="admin-list-row"><span><b>${escapeHtml(category.name)}</b><small>${(category.subcategories || []).length} subcategory · ${Array.isArray(category.productIds) ? category.productIds.length : 0} products · ${category.active === false ? 'Hidden' : 'Active'}</small></span><span class="row-actions"><button class="outline-button" data-edit-category="${escapeHtml(category.id)}">Edit</button><button class="outline-button danger-button" data-delete-category="${escapeHtml(category.id)}">Remove</button></span></div>`).join('')}</div></div></section>`);
 
   setupAdminWorkspace();
   openModal('adminModal');
@@ -847,6 +930,7 @@ document.addEventListener('click', event => {
     const form = $('#categoryForm');
     const input = form?.elements?.newSubcategory;
     const name = String(input?.value || '').trim();
+    const image = String(form?.elements?.newSubcategoryImage?.value || '').trim();
     if (!name) return showToast('Subcategory name দিন');
 
     const id = String(form?.elements?.id?.value || '').trim();
@@ -860,8 +944,9 @@ document.addEventListener('click', event => {
       return showToast('এই subcategory আগে থেকেই আছে');
     }
 
-    category.subcategories.push({id:`sub-${Date.now()}`, name, productIds:[]});
+    category.subcategories.push({id:`sub-${Date.now()}`, name, image, productIds:[]});
     input.value = '';
+    if (form.elements.newSubcategoryImage) form.elements.newSubcategoryImage.value = '';
     renderCategorySubcategoryList(category);
     showToast('Subcategory যোগ হয়েছে');
     return;
@@ -988,3 +1073,72 @@ document.addEventListener('submit', event => {
 });
 document.addEventListener('submit', event => { if (event.target.id === 'authForm' && currentUser && event.target.querySelector('[name="district"]')) { const district = new FormData(event.target).get('district'); if (district) { currentUser.district = district; users = users.map(user => user.id === currentUser.id ? currentUser : user); write('laiba_current_user', currentUser); saveState(); } } if (event.target.id === 'checkoutForm' && currentUser) { const district = new FormData(event.target).get('district'); if (district) { currentUser.district = district; const latestOrder = orders[orders.length - 1]; if (latestOrder && latestOrder.userId === currentUser.id) latestOrder.district = district; users = users.map(user => user.id === currentUser.id ? currentUser : user); write('laiba_current_user', currentUser); saveState(); } } });
 $('#overlay').addEventListener('click', () => { document.querySelectorAll('.modal').forEach(modal => { modal.hidden = true; }); $('#cartDrawer').classList.remove('open'); activeModal = null; $('#overlay').hidden = true; });
+
+if (!window.__categoryFloatingMenuAutoCloseBound) {
+  window.__categoryFloatingMenuAutoCloseBound = true;
+  let closeTimer;
+
+  const cancelClose = () => clearTimeout(closeTimer);
+
+  const scheduleClose = () => {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      const menu = document.querySelector('#categoryFloatingSubmenu');
+      if (menu) menu.hidden = true;
+    }, 220);
+  };
+
+  document.addEventListener('pointerover', event => {
+    const item = event.target.closest?.('.category-menu-item');
+    const menu = event.target.closest?.('#categoryFloatingSubmenu');
+    if (item || menu) cancelClose();
+  });
+
+  document.addEventListener('pointerout', event => {
+    const item = event.target.closest?.('.category-menu-item');
+    const menu = event.target.closest?.('#categoryFloatingSubmenu');
+    if (!item && !menu) return;
+
+    const next = event.relatedTarget;
+    if (
+      next &&
+      (
+        next.closest?.('.category-menu-item') ||
+        next.closest?.('#categoryFloatingSubmenu')
+      )
+    ) return;
+
+    scheduleClose();
+  });
+}
+
+if (!window.__categoryFloatingMouseGuardBound) {
+  window.__categoryFloatingMouseGuardBound = true;
+
+  let closeTimer;
+
+  const keepMenuOpen = () => clearTimeout(closeTimer);
+
+  const closeMenuLater = () => {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      const menu = document.querySelector('#categoryFloatingSubmenu');
+      if (menu) {
+        menu.hidden = true;
+        menu.style.display = 'none';
+      }
+    }, 220);
+  };
+
+  document.addEventListener('mousemove', event => {
+    const insideCategory = event.target.closest?.('.category-menu-item');
+    const insideMenu = event.target.closest?.('#categoryFloatingSubmenu');
+
+    if (insideCategory || insideMenu) {
+      keepMenuOpen();
+      return;
+    }
+
+    closeMenuLater();
+  });
+}

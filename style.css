@@ -56,3 +56,280 @@
 .category-card b{
   background:transparent!important;
 }
+
+
+#categories .section-heading{align-items:center}
+#categoryGrid{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  gap:16px!important;
+  width:100%;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  scroll-behavior:smooth;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  padding:8px 2px 18px!important;
+}
+#categoryGrid::-webkit-scrollbar{display:none}
+#categoryGrid .category-menu-item{
+  display:block!important;
+  flex:0 0 190px!important;
+  width:190px!important;
+  scroll-snap-align:start;
+}
+#categoryGrid .category-card{
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#categoryGrid .category-card img{
+  display:block!important;
+  width:100%!important;
+  aspect-ratio:1/1!important;
+  object-fit:cover!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.category-slider-controls{
+  display:flex!important;
+  align-items:center;
+  gap:8px;
+}
+.category-slider-arrow{
+  width:38px;
+  height:38px;
+  padding:0;
+  border:1px solid #d9d9d9;
+  border-radius:50%;
+  background:transparent!important;
+  color:inherit;
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+}
+.category-slider-arrow:hover{background:rgba(0,0,0,.05)!important}
+@media(max-width:640px){
+  #categoryGrid .category-menu-item{flex-basis:150px!important;width:150px!important}
+}
+
+#categoryGrid{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  gap:16px!important;
+  width:100%;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch;
+  scroll-behavior:smooth;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  padding:8px 2px 18px!important;
+  cursor:grab;
+}
+#categoryGrid:active{cursor:grabbing}
+#categoryGrid::-webkit-scrollbar{display:none}
+#categoryGrid .category-menu-item{
+  flex:0 0 190px!important;
+  width:190px!important;
+  scroll-snap-align:start;
+}
+#categoryGrid .category-card{
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#categoryGrid .category-card img{
+  display:block!important;
+  width:100%!important;
+  aspect-ratio:1/1!important;
+  object-fit:cover!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+@media(max-width:640px){
+  #categoryGrid .category-menu-item{
+    flex:0 0 150px!important;
+    width:150px!important;
+  }
+}
+
+/* Category hover submenu: keep it inside the slider flow so it never gets clipped */
+#categoryGrid .category-menu-item{
+  align-self:flex-start!important;
+  height:auto!important;
+}
+
+#categoryGrid .category-hover-menu{
+  position:static!important;
+  display:none;
+  margin-top:6px;
+  padding:6px;
+  width:100%;
+  box-sizing:border-box;
+  border:0!important;
+  border-radius:10px;
+  background:transparent;
+  box-shadow:none!important;
+}
+
+#categoryGrid .category-menu-item:hover .category-hover-menu{
+  display:grid!important;
+  gap:4px;
+}
+
+#categoryGrid .category-hover-menu button{
+  padding:7px 9px;
+  border:0;
+  border-radius:8px;
+  background:rgba(0,0,0,.04);
+  text-align:left;
+  cursor:pointer;
+}
+
+#categoryGrid .category-hover-menu button:hover{
+  background:rgba(0,0,0,.08);
+}
+
+
+.category-menu-item.is-submenu-open .category-card{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(0,0,0,.08)!important;
+}
+.category-floating-submenu{
+  position:fixed;
+  z-index:99999;
+  width:min(320px,calc(100vw - 20px));
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  padding:9px;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 14px 35px rgba(0,0,0,.14);
+}
+.category-floating-submenu button{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 9px;
+  border:0;
+  border-bottom:2px solid transparent;
+  border-radius:7px;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-size:13px;
+  white-space:nowrap;
+}
+.category-floating-submenu button:hover{
+  background:rgba(0,0,0,.045);
+  border-bottom-color:currentColor;
+  font-weight:700;
+}
+.category-floating-submenu button img{
+  width:28px;
+  height:28px;
+  object-fit:cover;
+  border-radius:7px;
+}
+.subcategory-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+  opacity:.45;
+}
+
+.category-subcategory-content>input{display:block;width:100%;box-sizing:border-box;margin:6px 0 8px;padding:7px 9px;border:1px solid #ddd;border-radius:8px;background:transparent;font:inherit;font-size:12px}
+
+.category-floating-submenu{
+  width:min(380px,calc(100vw - 20px))!important;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+  gap:8px!important;
+  padding:12px!important;
+}
+
+.category-floating-submenu button{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  padding:7px 4px!important;
+  border:0!important;
+  border-radius:9px!important;
+  background:transparent!important;
+  font-size:13px!important;
+  font-weight:400!important;
+  text-align:center;
+  white-space:normal!important;
+}
+
+.category-floating-submenu button img{
+  width:52px!important;
+  height:52px!important;
+  border-radius:9px!important;
+  object-fit:cover;
+  display:block;
+}
+
+.category-floating-submenu button span{
+  font-size:13px;
+  line-height:1.25;
+  font-weight:400;
+  text-decoration:none;
+  text-underline-offset:3px;
+}
+
+.category-floating-submenu button:hover{
+  background:rgba(0,0,0,.035)!important;
+  font-weight:400!important;
+}
+
+.category-floating-submenu button:hover span{
+  font-weight:400!important;
+  text-decoration:underline;
+}
+
+
+.category-floating-submenu button .subcategory-dot{
+  display:none!important;
+}
+
+.category-floating-submenu button{
+  justify-content:flex-start!important;
+  align-items:center!important;
+  text-align:center!important;
+}
+
+.category-floating-submenu button span{
+  width:100%;
+  text-align:center!important;
+}
+
+.category-floating-submenu[hidden]{
+  display:none!important;
+}
+
+.category-floating-submenu button:not(:has(img)){
+  justify-content:center!important;
+  align-items:center!important;
+  text-align:center!important;
+  min-height:76px!important;
+}
+
+.category-floating-submenu button:not(:has(img)) span{
+  width:100%!important;
+  text-align:center!important;
+}
