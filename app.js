@@ -58,6 +58,7 @@ let checkoutDraft = {name:'', phone:'', address:'', payment:'cod', district:'ঢ
 let adminOrderLimit = 10;
 let editingGiftId = null;
 let editingAdId = null;
+let pendingDeletedProductIds = new Set();
 
 let cloudSaveQueue = Promise.resolve();
 
@@ -83,6 +84,64 @@ function saveState() {
     });
 
   return cloudSaveQueue;
+}
+
+async function savePendingProductChanges() {
+  if (!pendingDeletedProductIds.size) {
+    return showToast('Save করার মতো কোনো product change নেই');
+  }
+
+  const client = window.laibaSupabase;
+  if (!client) {
+    return showToast('Supabase connection পাওয়া যায়নি — changes Save হয়নি');
+  }
+
+  const button = document.querySelector('[data-save-product-changes]');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Saving...';
+  }
+
+  try {
+    const {data: sessionData, error: sessionError} = await client.auth.getSession();
+
+    if (sessionError) {
+      throw new Error(`Authentication check failed: ${sessionError.message}`);
+    }
+
+    const session = sessionData?.session;
+    if (!session?.user) {
+      throw new Error('Supabase admin session পাওয়া যায়নি। আবার admin login করুন।');
+    }
+
+    const profileResult = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileResult.error) {
+      throw new Error(`Admin profile check failed: ${profileResult.error.message}`);
+    }
+
+    if (profileResult.data?.role !== 'admin') {
+      throw new Error('এই Supabase account-এর admin permission নেই।');
+    }
+
+    await persistCloudState();
+
+    write('laiba_products', products);
+    renderProducts();
+    renderAdmin();
+    showToast('পণ্য পরিবর্তন সফলভাবে Save হয়েছে ✓');
+  } catch (error) {
+    console.error('Product changes save failed:', error);
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Save Changes';
+    }
+    showToast(error.message || 'Product changes Save হয়নি');
+  }
 }
 
 async function persistCloudState() {
@@ -117,8 +176,6 @@ async function persistCloudState() {
     category:product.category,
     stock:Number(product.stock || 0),
     image:primaryProductImage(product),
-    images:productImages(product),
-    videos:productVideos(product),
     description:product.description || '',
     active:true
   }));
@@ -131,10 +188,9 @@ async function persistCloudState() {
     throw new Error(`Product lookup failed: ${existingResult.error.message}`);
   }
 
-  const localIds = new Set(cloudProducts.map(product => Number(product.id)));
-  const staleIds = (existingResult.data || [])
-    .map(product => Number(product.id))
-    .filter(id => !localIds.has(id));
+  const staleIds = [...pendingDeletedProductIds]
+    .map(Number)
+    .filter(id => Number.isFinite(id));
 
   if (staleIds.length) {
     const deleteResult = await client
@@ -156,6 +212,8 @@ async function persistCloudState() {
       throw new Error(`Product save failed: ${upsertResult.error.message}`);
     }
   }
+
+  pendingDeletedProductIds.clear();
 }
 
 async function loadCloudState() {
@@ -338,12 +396,18 @@ function setupAdminWorkspace() {
   const productSection = [...admin.querySelectorAll('.admin-section')].find(section => section.querySelector('h3')?.textContent.includes('পণ্য তালিকা'));
   if (productSection) {
     productSection.classList.add('admin-card');
-    productSection.innerHTML = `<div class="section-inline"><h3>পণ্য তালিকা</h3><span>${products.length} items</span></div><div class="product-list-tools"><input id="adminProductSearch" placeholder="৩টি অক্ষর লিখে product search করুন"><small>নাম, category বা description দিয়ে খুঁজুন</small></div><div class="admin-list" id="adminProductList"></div>`;
+    productSection.innerHTML = `<div class="section-inline"><div><h3>পণ্য তালিকা</h3><span>${products.length} items</span></div>${pendingDeletedProductIds.size ? '<button class="primary-button" data-save-product-changes>Save Changes</button>' : ''}</div><div class="product-list-tools"><input id="adminProductSearch" placeholder="৩টি অক্ষর লিখে product search করুন"><small>নাম, category বা description দিয়ে খুঁজুন</small></div><div class="admin-list" id="adminProductList"></div>`;
     renderAdminProductList('');
   }
   admin.querySelectorAll('.admin-section').forEach(section => {
     section.classList.add('admin-card');
     const heading = section.querySelector('h3');
+    const isProductSection = heading?.textContent.includes('পণ্য তালিকা');
+    if (isProductSection) {
+      section.classList.remove('is-collapsed');
+      section.querySelector('[data-admin-toggle]')?.remove();
+      return;
+    }
     if (heading && !section.querySelector('[data-admin-toggle]')) heading.insertAdjacentHTML('afterend', '<button class="admin-card-toggle" type="button" data-admin-toggle>Open</button>');
     section.classList.add('is-collapsed');
   });
@@ -414,7 +478,25 @@ document.addEventListener('click', event => {
   const category = event.target.closest('[data-category]'); if (category) { event.preventDefault(); const target = category.dataset.category === 'ফ্যাশন' ? '#fashionProducts' : '#beautyProducts'; document.querySelector(target)?.scrollIntoView({behavior:'smooth'}); showToast(`${category.dataset.category} ক্যাটাগরির পণ্য দেখানো হচ্ছে`); return; }
   const adView = event.target.closest('[data-ad-view]'); if (adView) return showAdDetails(adView.dataset.adView);
   const editProduct = event.target.closest('[data-edit-product]'); if (editProduct) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(editProduct.dataset.editProduct)); if (!product) return; $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">PRODUCT EDITOR</p><h2>${escapeHtml(product.name)}</h2></div><form id="productEditForm" class="stack-form"><input type="hidden" name="id" value="${product.id}"><input name="name" value="${escapeHtml(product.name)}" placeholder="পণ্যের নাম" required><div class="two-fields"><input name="price" type="number" value="${product.price}" placeholder="দাম" required><input name="old" type="number" value="${product.old}" placeholder="আগের দাম" required></div><div class="two-fields"><select name="category" required><option value="ফ্যাশন" ${product.category === 'ফ্যাশন' ? 'selected' : ''}>ফ্যাশন</option><option value="বিউটি" ${product.category === 'বিউটি' ? 'selected' : ''}>বিউটি</option><option value="হোম" ${product.category === 'হোম' ? 'selected' : ''}>হোম</option><option value="টেক" ${product.category === 'টেক' ? 'selected' : ''}>টেক</option></select><input name="stock" type="number" value="${product.stock}" placeholder="স্টক" required></div><input name="image" type="url" value="${escapeHtml(product.image)}" placeholder="Image URL" required><textarea name="description" placeholder="পণ্যের বর্ণনা" required>${escapeHtml(product.description)}</textarea><button class="primary-button" type="submit">Product update করুন</button></form>`; return openModal('ordersModal'); }
-  const deleteProduct = event.target.closest('[data-delete-product]'); if (deleteProduct) { products = products.filter(product => product.id !== Number(deleteProduct.dataset.deleteProduct)); saveState(); renderProducts(); renderAdmin(); showToast('পণ্য মুছে ফেলা হয়েছে'); return; }
+  const saveProductChanges = event.target.closest('[data-save-product-changes]');
+  if (saveProductChanges) {
+    void savePendingProductChanges();
+    return;
+  }
+
+  const deleteProduct = event.target.closest('[data-delete-product]'); if (deleteProduct) {
+    const productId = Number(deleteProduct.dataset.deleteProduct);
+    const product = products.find(item => Number(item.id) === productId);
+    if (!product) return;
+
+    pendingDeletedProductIds.add(productId);
+    products = products.filter(item => Number(item.id) !== productId);
+
+    renderProducts();
+    renderAdmin();
+    showToast('পণ্যটি মুছে ফেলার জন্য চিহ্নিত হয়েছে — Save Changes চাপুন');
+    return;
+  }
   const deleteCoupon = event.target.closest('[data-delete-coupon]'); if (deleteCoupon) { coupons = coupons.filter(coupon => coupon.code !== deleteCoupon.dataset.deleteCoupon); saveState(); renderAdmin(); return; }
   const editCoupon = event.target.closest('[data-edit-coupon]'); if (editCoupon) { const coupon = coupons.find(item => item.code === editCoupon.dataset.editCoupon); if (coupon) { $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">COUPON EDITOR</p><h2>${escapeHtml(coupon.code)}</h2></div><form id="couponEditForm" class="stack-form"><input type="hidden" name="code" value="${escapeHtml(coupon.code)}"><input name="minOrder" type="number" value="${coupon.minOrder || 0}" placeholder="Minimum order"><input name="maxDiscount" type="number" value="${coupon.maxDiscount || 0}" placeholder="Maximum discount"><input name="expiresAt" type="datetime-local" value="${escapeHtml(coupon.expiresAt || '')}"><button class="primary-button" type="submit">Update coupon</button></form>`; openModal('ordersModal'); } return; }
   const deleteAd = event.target.closest('[data-delete-ad]'); if (deleteAd) { ads = ads.filter(ad => ad.id !== Number(deleteAd.dataset.deleteAd)); saveState(); renderAdmin(); return; }
