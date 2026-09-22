@@ -1142,3 +1142,62 @@ if (!window.__categoryFloatingMouseGuardBound) {
     closeMenuLater();
   });
 }
+
+/* AUTO SLIDE MULTIPLE CAMPAIGNS */
+if (!window.__campaignAutoSliderBound) {
+  window.__campaignAutoSliderBound = true;
+
+  const sliderTimers = new WeakMap();
+
+  const setupCampaignSlider = (selector) => {
+    document.querySelectorAll(selector).forEach(container => {
+      const items = [...container.children].filter(item => item.nodeType === 1);
+
+      if (items.length < 2) {
+        const oldTimer = sliderTimers.get(container);
+        if (oldTimer) clearInterval(oldTimer);
+        sliderTimers.delete(container);
+        return;
+      }
+
+      if (sliderTimers.has(container)) return;
+
+      container.style.display = 'flex';
+      container.style.flexWrap = 'nowrap';
+      container.style.overflowX = 'auto';
+      container.style.scrollBehavior = 'smooth';
+      container.style.scrollSnapType = 'x mandatory';
+
+      items.forEach(item => {
+        item.style.flex = '0 0 100%';
+        item.style.minWidth = '100%';
+        item.style.scrollSnapAlign = 'start';
+      });
+
+      const timer = setInterval(() => {
+        const maxScroll = container.scrollWidth - container.clientWidth;
+
+        if (container.scrollLeft >= maxScroll - 5) {
+          container.scrollTo({left: 0, behavior: 'smooth'});
+        } else {
+          container.scrollBy({
+            left: container.clientWidth,
+            behavior: 'smooth'
+          });
+        }
+      }, 1500);
+
+      sliderTimers.set(container, timer);
+    });
+  };
+
+  const refreshCampaignSliders = () => {
+    setupCampaignSlider('#adGrid');
+    setupCampaignSlider('#giftGrid');
+  };
+
+  refreshCampaignSliders();
+
+  const observer = new MutationObserver(refreshCampaignSliders);
+  observer.observe(document.body, {childList:true, subtree:true});
+}

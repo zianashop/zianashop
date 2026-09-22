@@ -333,3 +333,1099 @@
   width:100%!important;
   text-align:center!important;
 }
+
+/* FULL-WIDTH PREMIUM FEATURE BANNERS */
+.gift-section,
+.campaign-band>.section,
+.story-section{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+
+.gift-section .section-heading,
+.campaign-band .special-campaigns .section-heading,
+.new-arrivals-section .section-heading{
+  width:min(1180px,100% - 48px)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* SAME BANNER SIZE */
+.gift-card,
+.campaign-banner,
+.ad-card,
+.story-card{
+  width:100%!important;
+  min-height:280px!important;
+  height:280px!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+}
+
+/* GIFT */
+.gift-grid{
+  width:100%!important;
+  display:block!important;
+}
+
+.gift-card{
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  padding:0!important;
+  gap:0!important;
+}
+
+.gift-card img{
+  width:100%!important;
+  height:280px!important;
+  object-fit:cover!important;
+  background:#f4f3ee!important;
+}
+
+.gift-card h3,
+.gift-card p,
+.gift-card small,
+.gift-card .gift-summary{
+  padding-left:32px!important;
+  padding-right:32px!important;
+}
+
+/* CAMPAIGN */
+.campaign-band{
+  padding-top:0!important;
+}
+
+.campaign-banner{
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  padding:0!important;
+  margin:0!important;
+}
+
+.campaign-banner>div:first-child{
+  padding:38px 48px!important;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.campaign-visual{
+  min-height:280px!important;
+  height:280px!important;
+}
+
+.campaign-visual>img{
+  width:100%!important;
+  height:280px!important;
+  object-fit:cover!important;
+}
+
+/* CAMPAIGN CARDS */
+.special-campaigns{
+  width:100%!important;
+  padding:24px 0 0!important;
+}
+
+.ad-grid{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:0!important;
+}
+
+.ad-card{
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  padding:0!important;
+  background:#202321!important;
+}
+
+.ad-card img{
+  width:100%!important;
+  height:280px!important;
+  opacity:1!important;
+  object-fit:cover!important;
+}
+
+.ad-card span{
+  display:flex!important;
+  flex-direction:column;
+  justify-content:center;
+  padding:28px 32px!important;
+}
+
+/* NEW ARRIVAL FULL WIDTH */
+.new-arrivals-section{
+  width:100%!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+
+.new-arrivals-section .product-grid{
+  width:min(1180px,100% - 48px)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* ZIYANA SHOP */
+.story-section{
+  padding-top:0!important;
+}
+
+.story-card{
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  margin:0!important;
+}
+
+.story-card>div{
+  padding:38px 48px!important;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.story-card img{
+  width:100%!important;
+  height:280px!important;
+  object-fit:cover!important;
+}
+
+/* DESKTOP FULL SCREEN EDGE */
+@media(min-width:801px){
+  .gift-section,
+  .campaign-band,
+  .story-section{
+    width:100vw!important;
+    margin-left:calc(50% - 50vw)!important;
+  }
+}
+
+/* MOBILE */
+@media(max-width:800px){
+  .gift-card,
+  .campaign-banner,
+  .ad-card,
+  .story-card{
+    min-height:220px!important;
+    height:220px!important;
+  }
+
+  .gift-card img,
+  .campaign-visual,
+  .campaign-visual>img,
+  .ad-card img,
+  .story-card img{
+    height:220px!important;
+  }
+
+  .campaign-banner>div:first-child,
+  .story-card>div{
+    padding:22px!important;
+  }
+
+  .gift-card h3,
+  .gift-card p,
+  .gift-card small{
+    padding-left:20px!important;
+    padding-right:20px!important;
+  }
+
+  .ad-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  .new-arrivals-section .product-grid{
+    width:calc(100% - 28px)!important;
+  }
+}
+
+
+/* FULL SCREEN FEATURE BANNER SYSTEM */
+.gift-section{
+  width:100vw!important;
+  margin-left:calc(50% - 50vw)!important;
+  padding:0!important;
+}
+
+.gift-section>.section-heading{
+  display:none!important;
+}
+
+.gift-grid{
+  width:100%!important;
+  display:block!important;
+}
+
+.gift-card{
+  width:100%!important;
+  height:300px!important;
+  min-height:300px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  position:relative!important;
+  overflow:hidden!important;
+  border-radius:0!important;
+}
+
+.gift-card img{
+  width:100%!important;
+  height:300px!important;
+  object-fit:cover!important;
+}
+
+.gift-card>div{
+  padding:28px 36px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+}
+
+.gift-card>div .eyebrow{
+  margin:0 0 7px!important;
+  font-size:9px!important;
+}
+
+.gift-card h3{
+  margin:0 0 7px!important;
+  font-size:22px!important;
+}
+
+.gift-card>div p:not(.eyebrow){
+  margin:0 0 8px!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+}
+
+.gift-card>div small{
+  font-size:9px!important;
+}
+
+/* CAMPAIGN BANNER */
+.campaign-band{
+  width:100vw!important;
+  margin-left:calc(50% - 50vw)!important;
+  padding:0!important;
+}
+
+.campaign-band>.section{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}
+
+.campaign-banner{
+  width:100%!important;
+  height:300px!important;
+  min-height:300px!important;
+  margin:0!important;
+  padding:0!important;
+  grid-template-columns:50% 50%!important;
+}
+
+.campaign-banner>div:first-child{
+  padding:28px 36px!important;
+}
+
+.campaign-visual,
+.campaign-visual>img{
+  height:300px!important;
+  min-height:300px!important;
+}
+
+/* HIDE OUTSIDE TITLES */
+.special-campaigns>.section-heading,
+#newArrivals>.section-heading{
+  display:none!important;
+}
+
+/* WEEKEND CAMPAIGNS */
+.special-campaigns{
+  width:100%!important;
+  padding:0!important;
+}
+
+.special-campaigns:before{
+  content:"SPECIAL CAMPAIGNS · WEEKEND EDITS";
+  display:block;
+  padding:14px 4vw 8px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.14em;
+  color:var(--muted);
+}
+
+.ad-grid{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:0!important;
+}
+
+.ad-card{
+  width:100%!important;
+  height:300px!important;
+  min-height:300px!important;
+  display:grid!important;
+  grid-template-columns:50% 50%!important;
+  border-radius:0!important;
+}
+
+.ad-card img{
+  width:100%!important;
+  height:300px!important;
+  opacity:1!important;
+  object-fit:cover!important;
+}
+
+.ad-card span{
+  justify-content:center!important;
+  padding:28px 36px!important;
+}
+
+/* NEW ARRIVALS */
+.new-arrivals-section{
+  width:100%!important;
+  padding:0!important;
+  margin:0!important;
+}
+
+.new-arrivals-section:before{
+  content:"NEW ARRIVALS";
+  display:block;
+  padding:14px 4vw 8px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.14em;
+  color:var(--muted);
+}
+
+.new-arrivals-section .product-grid{
+  width:100%!important;
+  margin:0!important;
+  padding:0 4vw 18px!important;
+}
+
+/* ZIYANA SHOP FULL WIDTH */
+.story-section{
+  width:100vw!important;
+  margin-left:calc(50% - 50vw)!important;
+  padding:0!important;
+}
+
+.story-card{
+  width:100%!important;
+  height:300px!important;
+  min-height:300px!important;
+  border-radius:0!important;
+}
+
+.story-card>div{
+  padding:28px 36px!important;
+}
+
+.story-card img{
+  width:100%!important;
+  height:300px!important;
+  object-fit:cover!important;
+}
+
+@media(max-width:800px){
+  .gift-card,
+  .campaign-banner,
+  .ad-card,
+  .story-card{
+    height:240px!important;
+    min-height:240px!important;
+  }
+
+  .gift-card img,
+  .campaign-visual,
+  .campaign-visual>img,
+  .ad-card img,
+  .story-card img{
+    height:240px!important;
+    min-height:240px!important;
+  }
+
+  .gift-card>div,
+  .campaign-banner>div:first-child,
+  .ad-card span,
+  .story-card>div{
+    padding:20px!important;
+  }
+}
+
+
+/* CLEAN FEATURE SECTION SPACING */
+.gift-section,
+.campaign-band,
+.story-section{
+  width:100%!important;
+  max-width:1180px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding-left:24px!important;
+  padding-right:24px!important;
+  padding-bottom:28px!important;
+}
+
+.gift-section{
+  padding-top:0!important;
+}
+
+.gift-grid,
+.special-campaigns,
+.new-arrivals-section{
+  width:100%!important;
+}
+
+.gift-card,
+.campaign-banner,
+.ad-card,
+.story-card{
+  border-radius:14px!important;
+  overflow:hidden!important;
+}
+
+/* GIFT */
+.gift-card{
+  height:250px!important;
+  min-height:250px!important;
+  grid-template-columns:48% 52%!important;
+}
+
+.gift-card img{
+  height:250px!important;
+}
+
+/* MAIN CAMPAIGN */
+.campaign-band{
+  background:transparent!important;
+  padding-top:0!important;
+}
+
+.campaign-band>.section{
+  width:100%!important;
+  max-width:none!important;
+}
+
+.campaign-banner{
+  height:250px!important;
+  min-height:250px!important;
+  border-radius:14px!important;
+}
+
+/* WEEKEND CAMPAIGN */
+.special-campaigns{
+  padding-top:18px!important;
+}
+
+.special-campaigns:before{
+  padding:0 0 9px!important;
+  font-size:10px!important;
+}
+
+.ad-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:14px!important;
+}
+
+.ad-card{
+  height:220px!important;
+  min-height:220px!important;
+  grid-template-columns:48% 52%!important;
+}
+
+.ad-card img{
+  height:220px!important;
+}
+
+/* NEW ARRIVAL */
+.new-arrivals-section{
+  padding-top:20px!important;
+}
+
+.new-arrivals-section:before{
+  padding:0 0 10px!important;
+}
+
+/* ZIYANA SHOP */
+.story-section{
+  padding-top:0!important;
+}
+
+.story-card{
+  height:250px!important;
+  min-height:250px!important;
+}
+
+.story-card img{
+  height:250px!important;
+}
+
+/* SMALL, CONSISTENT SPACE BETWEEN EACH FEATURE */
+.gift-section + .campaign-band,
+.campaign-band + .story-section{
+  margin-top:4px!important;
+}
+
+@media(max-width:800px){
+  .gift-section,
+  .campaign-band,
+  .story-section{
+    width:100%!important;
+    padding-left:14px!important;
+    padding-right:14px!important;
+    padding-bottom:20px!important;
+  }
+
+  .gift-card,
+  .campaign-banner{
+    height:220px!important;
+    min-height:220px!important;
+  }
+
+  .gift-card img,
+  .campaign-visual,
+  .campaign-visual>img{
+    height:220px!important;
+    min-height:220px!important;
+  }
+
+  .ad-grid{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+
+  .ad-card{
+    height:190px!important;
+    min-height:190px!important;
+  }
+
+  .ad-card img{
+    height:190px!important;
+  }
+
+  .story-card{
+    height:220px!important;
+    min-height:220px!important;
+  }
+
+  .story-card img{
+    height:220px!important;
+  }
+}
+
+
+/* FINAL BALANCED BANNER SIZE + MINIMAL PAGE MARGIN */
+.gift-section,
+.campaign-band,
+.story-section{
+  width:calc(100% - 16px)!important;
+  max-width:none!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  padding-bottom:18px!important;
+}
+
+.gift-card,
+.campaign-banner,
+.ad-card,
+.story-card{
+  height:250px!important;
+  min-height:250px!important;
+  border-radius:10px!important;
+  overflow:hidden!important;
+}
+
+.gift-card img,
+.campaign-visual,
+.campaign-visual>img,
+.ad-card img,
+.story-card img{
+  height:250px!important;
+  min-height:250px!important;
+  object-fit:cover!important;
+}
+
+.special-campaigns,
+.new-arrivals-section{
+  width:calc(100% - 16px)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+.special-campaigns{
+  padding-top:10px!important;
+}
+
+.ad-grid{
+  gap:10px!important;
+}
+
+.ad-card{
+  width:100%!important;
+}
+
+.new-arrivals-section{
+  padding-top:12px!important;
+}
+
+@media(max-width:800px){
+  .gift-section,
+  .campaign-band,
+  .story-section,
+  .special-campaigns,
+  .new-arrivals-section{
+    width:calc(100% - 12px)!important;
+  }
+
+  .gift-card,
+  .campaign-banner,
+  .ad-card,
+  .story-card{
+    height:220px!important;
+    min-height:220px!important;
+  }
+
+  .gift-card img,
+  .campaign-visual,
+  .campaign-visual>img,
+  .ad-card img,
+  .story-card img{
+    height:220px!important;
+    min-height:220px!important;
+  }
+}
+
+
+/* WEEKEND CAMPAIGN SAME SIZE AS ALL BANNERS */
+.ad-grid{
+  grid-template-columns:1fr!important;
+  width:100%!important;
+}
+
+.ad-grid .ad-card{
+  width:100%!important;
+  height:250px!important;
+  min-height:250px!important;
+  grid-template-columns:48% 52%!important;
+}
+
+.ad-grid .ad-card img{
+  width:100%!important;
+  height:250px!important;
+  min-height:250px!important;
+  object-fit:cover!important;
+}
+
+@media(max-width:800px){
+  .ad-grid .ad-card{
+    height:220px!important;
+    min-height:220px!important;
+  }
+
+  .ad-grid .ad-card img{
+    height:220px!important;
+    min-height:220px!important;
+  }
+}
+
+
+/* TINY NATURAL GAP BEFORE FREE GIFT */
+#mall + .gift-section{
+  margin-top:10px!important;
+}
+
+
+/* SAME GAP BETWEEN CATEGORY AREA AND FREE GIFT */
+#dynamicCategorySections + #gifts{
+  margin-top:18px!important;
+}
+
+
+/* PREMIUM NON-GREEN ACCENT PALETTE */
+:root{
+  --premium-bg:#d9cdbb;
+  --premium-bg-soft:#e7dfd2;
+  --premium-text:#2b2925;
+}
+
+/* Replace green sections, keep logo green */
+.category-menu,
+.campaign-banner,
+.gift-card,
+.story-card{
+  background:var(--premium-bg)!important;
+  color:var(--premium-text)!important;
+}
+
+.category-menu{
+  border-bottom:1px solid #c8baa6;
+}
+
+.campaign-banner h2,
+.campaign-banner p,
+.gift-card h3,
+.gift-card p,
+.gift-card small,
+.story-card h2,
+.story-card p{
+  color:var(--premium-text)!important;
+}
+
+.category-menu a,
+.category-menu i{
+  color:var(--premium-text)!important;
+}
+
+.story-card em,
+.campaign-banner em{
+  color:var(--coral)!important;
+}
+
+/* soft premium alternate blocks */
+.benefits{
+  background:var(--premium-bg-soft)!important;
+}
+
+.deal-band{
+  background:#eee9e1!important;
+}
+
+/* logo stays original green */
+.brand-mark{
+  background:var(--lime)!important;
+  color:var(--ink)!important;
+}
+
+
+/* WHITE SECTION LOOK */
+.category-menu,
+.campaign-banner,
+.gift-card,
+.story-card,
+.benefits{
+  background:#fff!important;
+}
+
+.deal-band{
+  background:#fff!important;
+}
+
+.campaign-banner,
+.gift-card,
+.story-card{
+  color:var(--ink)!important;
+}
+
+.campaign-banner h2,
+.campaign-banner p,
+.gift-card h3,
+.gift-card p,
+.gift-card small,
+.story-card h2,
+.story-card p{
+  color:var(--ink)!important;
+}
+
+/* KEEP LOGO GREEN */
+.brand-mark{
+  background:var(--lime)!important;
+  color:var(--ink)!important;
+}
+
+
+/* COMPACT CENTERED CATEGORY HEADER */
+#categories{
+  padding-top:0!important;
+  padding-bottom:14px!important;
+}
+
+#categories .section-heading{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  margin-bottom:10px!important;
+  text-align:center!important;
+}
+
+#categories .section-heading .eyebrow{
+  font-size:8px!important;
+  letter-spacing:.16em!important;
+  margin:0!important;
+}
+
+#categories .section-heading h2{
+  font-size:20px!important;
+  line-height:1.1!important;
+  margin:0!important;
+}
+
+/* BRING CATEGORY CLOSER TO PREVIOUS SECTION */
+.benefits{
+  margin-bottom:10px!important;
+}
+
+/* BRING NEXT SECTION CLOSER */
+#dynamicCategorySections{
+  margin-top:0!important;
+}
+
+#dynamicCategorySections .category-product-section:first-child{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+
+#dynamicCategorySections .category-product-section{
+  padding-bottom:18px!important;
+}
+
+@media(max-width:800px){
+  #categories{
+    padding-bottom:10px!important;
+  }
+
+  #categories .section-heading h2{
+    font-size:19px!important;
+  }
+
+  .benefits{
+    margin-bottom:8px!important;
+  }
+}
+
+
+/* COMPACT CATEGORY ROW HEADER */
+.category-product-section{
+  display:block!important;
+  padding-top:0!important;
+  padding-bottom:18px!important;
+}
+
+.category-product-section+.category-product-section{
+  margin-top:8px!important;
+}
+
+.category-product-section .section-heading{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin:0 0 9px!important;
+  width:100%!important;
+}
+
+.category-product-section .section-heading>div{
+  display:flex!important;
+  align-items:baseline!important;
+  gap:8px!important;
+  flex:0 0 auto!important;
+  min-width:max-content!important;
+}
+
+.category-product-section .section-heading .eyebrow{
+  display:block!important;
+  margin:0!important;
+  font-size:8px!important;
+  letter-spacing:.12em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+.category-product-section .section-heading h2{
+  margin:0!important;
+  font-size:20px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+/* SUBCATEGORIES STAY BESIDE CATEGORY NAME */
+.category-product-section .category-subcategory-filters{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  gap:5px!important;
+  margin:0!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+}
+
+.category-product-section .category-subcategory-filters::-webkit-scrollbar{
+  display:none!important;
+}
+
+.category-product-section .category-subcategory-filters button{
+  flex:0 0 auto!important;
+  padding:4px 8px!important;
+  min-height:24px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  border-radius:12px!important;
+  white-space:nowrap!important;
+}
+
+.category-product-section .product-grid{
+  margin-top:0!important;
+}
+
+@media(max-width:800px){
+  .category-product-section .section-heading{
+    gap:7px!important;
+  }
+
+  .category-product-section .section-heading>div{
+    gap:6px!important;
+  }
+
+  .category-product-section .section-heading h2{
+    font-size:17px!important;
+  }
+
+  .category-product-section .section-heading .eyebrow{
+    font-size:7px!important;
+  }
+
+  .category-product-section .category-subcategory-filters{
+    gap:4px!important;
+  }
+
+  .category-product-section .category-subcategory-filters button{
+    padding:4px 7px!important;
+    font-size:9px!important;
+  }
+}
+
+
+/* CATEGORY TITLE + SUBCATEGORY SAME LINE */
+.category-product-section{
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr)!important;
+  column-gap:8px!important;
+  row-gap:7px!important;
+  align-items:center!important;
+  padding-top:0!important;
+  padding-bottom:18px!important;
+}
+
+.category-product-section .section-heading{
+  grid-column:1!important;
+  grid-row:1!important;
+  margin:0!important;
+  display:block!important;
+  width:auto!important;
+}
+
+.category-product-section .section-heading .eyebrow{
+  display:none!important;
+}
+
+.category-product-section .section-heading h2{
+  margin:0!important;
+  font-size:19px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+.category-product-section .category-subcategory-filters{
+  grid-column:2!important;
+  grid-row:1!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  gap:5px!important;
+  margin:0!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+  min-width:0!important;
+}
+
+.category-product-section .category-subcategory-filters::-webkit-scrollbar{
+  display:none!important;
+}
+
+.category-product-section .category-subcategory-filters button{
+  flex:0 0 auto!important;
+  min-height:24px!important;
+  padding:4px 8px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  border-radius:12px!important;
+}
+
+.category-product-section .product-grid{
+  grid-column:1/-1!important;
+  grid-row:2!important;
+  margin-top:0!important;
+}
+
+@media(max-width:800px){
+  .category-product-section{
+    grid-template-columns:auto minmax(0,1fr)!important;
+    column-gap:6px!important;
+  }
+
+  .category-product-section .section-heading h2{
+    font-size:17px!important;
+  }
+
+  .category-product-section .category-subcategory-filters button{
+    padding:4px 7px!important;
+    font-size:9px!important;
+  }
+}
+
+
+/* HIDE SECOND NAVIGATION ROW */
+.nav-row{
+  display:none!important;
+}
+
+
+/* CATEGORY SECTION: HIDE TEXT, KEEP SLIDER */
+#categories .section-heading{
+  display:none!important;
+}
+
+#categories{
+  padding-top:0!important;
+  margin-top:0!important;
+}
+
+#categoryGrid{
+  margin-top:0!important;
+}
+
+
+/* CATEGORY RAIL: EXPAND FROM CENTER TO BOTH SIDES */
+#categories{
+  width:100vw!important;
+  max-width:none!important;
+  margin-left:calc(50% - 50vw)!important;
+  margin-right:calc(50% - 50vw)!important;
+  padding-left:14px!important;
+  padding-right:14px!important;
+}
+
+#categoryGrid{
+  width:100%!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+
+#categoryGrid{
+  justify-content:center!important;
+}
