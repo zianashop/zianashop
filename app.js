@@ -175,6 +175,7 @@ function renderAdmin() {
   openModal('adminModal');
 }
 function setupAdminWorkspace() {
+  prepareProductMediaInputs();
   const admin = $('#adminContent');
   const adForm = $('#adForm');
   const giftForm = $('#giftForm');
