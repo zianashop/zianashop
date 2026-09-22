@@ -17,7 +17,7 @@ const defaultCoupons = [
   {code:'SAVE200',type:'fixed',value:200,minOrder:1500,active:true}
 ];
 const defaultAds = [{id:1,title:'Weekend style edit',text:'Fresh looks, better prices.',image:'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80',link:'#campaign',productIds:[1,5,7,2,6,8],active:true}];
-const defaultHero = {tagTop:'TRENDING',tagBottom:'NOW',image:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1100&q=85',cardTitle:'আজকের পছন্দ',cardOffer:'Up to 40% off'};
+const defaultHero = {image:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1100&q=85'};
 const defaultCampaign = {title:'Style refresh,',subtitle:'feel your best.',text:'Fashion আর Beauty-তে special price, limited-time offers এবং নতুন season-এর favourites একসাথে।',image:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85',discount:'50%',productIds:[]};
 const defaultGifts = [];
 const defaultShipping = {insideDhaka:60,outsideDhaka:120,freeThreshold:2499};
