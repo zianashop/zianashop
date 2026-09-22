@@ -23,10 +23,13 @@ create table if not exists public.products (
   category text not null default 'ফ্যাশন',
   stock integer not null default 0,
   image text not null default '',
+  images jsonb not null default '[]'::jsonb,
+  videos jsonb not null default '[]'::jsonb,
   description text not null default '',
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
