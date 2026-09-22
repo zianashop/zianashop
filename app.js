@@ -1,6 +1,8 @@
 const defaultCategories = [
-  ['ফ্যাশন', 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=400&q=80'],
-  ['বিউটি', 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=400&q=80']
+  {id:'fashion', name:'ফ্যাশন', image:'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=400&q=80', active:true, subcategories:[], productIds:[]},
+  {id:'beauty', name:'বিউটি', image:'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=400&q=80', active:true, subcategories:[], productIds:[]},
+  {id:'home', name:'হোম', image:'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80', active:true, subcategories:[], productIds:[]},
+  {id:'tech', name:'টেক', image:'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80', active:true, subcategories:[], productIds:[]}
 ];
 const defaultProducts = [
   {id:1,name:'AirFlex Everyday Sneakers',price:1490,old:2190,discount:'-32%',rating:'4.8',category:'ফ্যাশন',stock:24,image:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=85',description:'হালকা, আরামদায়ক এবং প্রতিদিনের জন্য তৈরি premium sneakers।'},
@@ -34,6 +36,13 @@ const productImages = product => normaliseProductMedia(product).images;
 const productVideos = product => normaliseProductMedia(product).videos;
 const primaryProductImage = product => productImages(product)[0] || product.image || '';
 let products = read('laiba_products', defaultProducts).map(normaliseProductMedia);
+let categories = read('laiba_categories', defaultCategories);
+categories = (Array.isArray(categories) ? categories : defaultCategories).map(category => ({
+  ...category,
+  productIds: Array.isArray(category.productIds)
+    ? category.productIds.map(Number)
+    : products.filter(product => product.category === category.name).map(product => Number(product.id))
+}));
 let cart = read('laiba_cart', []);
 let coupons = read('laiba_coupons', defaultCoupons);
 let ads = read('laiba_ads', defaultAds);
@@ -64,6 +73,7 @@ let cloudSaveQueue = Promise.resolve();
 
 function saveState() {
   write('laiba_products', products);
+  write('laiba_categories', categories);
   write('laiba_cart', cart);
   write('laiba_coupons', coupons);
   write('laiba_ads', ads);
@@ -150,6 +160,7 @@ async function persistCloudState() {
 
   const settings = [
     {key:'ads',value:ads},
+    {key:'categories',value:categories},
     {key:'hero',value:heroSettings},
     {key:'campaign',value:campaignSettings},
     {key:'mall',value:mallSettings},
@@ -257,6 +268,7 @@ async function loadCloudState() {
 
   settingsResult.data.forEach(setting => {
     if (setting.key === 'ads') ads = setting.value;
+    if (setting.key === 'categories') categories = setting.value;
     if (setting.key === 'hero') heroSettings = {...heroSettings,...setting.value};
     if (setting.key === 'campaign') campaignSettings = {...campaignSettings,...setting.value};
     if (setting.key === 'mall') mallSettings = setting.value;
@@ -284,30 +296,284 @@ function openModal(id) { activeModal = id; document.querySelectorAll('.modal').f
 function closeModal(id = activeModal) { if (id) $(`#${id}`).hidden = true; activeModal = null; if (!document.querySelector('.cart-drawer.open')) $('#overlay').hidden = true; }
 function showToast(text) { const toast = $('#toast'); toast.textContent = text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
 async function handleCloudAuth(data) { const client = window.laibaSupabase; const identifier = data.identifier.toLowerCase().trim(); if (!identifier.includes('@')) return showToast('Supabase login-এর জন্য email ব্যবহার করুন'); const result = data.name ? await client.auth.signUp({email:identifier,password:data.password,options:{data:{name:data.name,phone:data.phone || ''}}}) : await client.auth.signInWithPassword({email:identifier,password:data.password}); if (result.error) return showToast(result.error.message); if (!result.data.user) return showToast('Authentication সম্পন্ন হয়নি'); if (data.name && !result.data.session) return showToast('Email inbox থেকে confirmation দিন'); const profileResult = await client.from('profiles').select('*').eq('id', result.data.user.id).single(); const profile = profileResult.data || {}; currentUser = {id:result.data.user.id,name:profile.name || data.name || identifier,email:identifier,phone:profile.phone || data.phone || '',address:profile.address || '',district:profile.district || '',password:'',role:profile.role || 'customer'}; write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) return currentUser.role === 'admin' ? renderAdmin() : showToast('Admin access denied'); if (pendingCheckout) { pendingCheckout = false; return openCheckout(); } if (!data.name && currentUser.role === 'admin') return renderAdmin(); if (!data.name) openOrders(); }
-function decorateAdminForms() { const categoryOptions = '<option value="">ক্যাটাগরি নির্বাচন করুন</option><option value="ফ্যাশন">ফ্যাশন</option><option value="বিউটি">বিউটি</option><option value="হোম">হোম</option><option value="টেক">টেক</option>'; document.querySelectorAll('#productForm, #productEditForm').forEach(form => { form.noValidate = true; const field = form.querySelector('[name="category"]'); if (field && field.tagName !== 'SELECT') { const select = document.createElement('select'); select.name = 'category'; select.required = true; select.innerHTML = categoryOptions; select.value = field.value || 'ফ্যাশন'; field.replaceWith(select); } }); document.querySelectorAll('#giftForm, #giftEditForm').forEach(form => { form.noValidate = true; const placeholders = {title:'Gift-এর নাম',image:'Gift image URL',stock:'Gift stock',quantity:'এক অর্ডারে কতটি gift',minQuantity:'কতটি selected product কিনলে gift পাবেন'}; Object.entries(placeholders).forEach(([name, text]) => { const field = form.querySelector(`[name="${name}"]`); if (field) field.placeholder = text; }); if (!form.querySelector('[name="minQuantity"]')) { const input = document.createElement('input'); input.name = 'minQuantity'; input.type = 'number'; input.min = '1'; const giftId = form.querySelector('[name="id"]')?.value; input.value = giftId ? String(gifts.find(gift => gift.id === Number(giftId))?.minQuantity || 1) : '1'; input.placeholder = placeholders.minQuantity; const category = form.querySelector('[name="giftCategory"]'); (category || form.querySelector('[name="expiresAt"]'))?.before(input); } const picker = form.querySelector('.campaign-picker'); const minQuantity = form.querySelector('[name="minQuantity"]'); const giftCategory = form.querySelector('[name="giftCategory"]'); if (picker && minQuantity && giftCategory && !form.querySelector('.gift-rule-fields')) { const rules = document.createElement('div'); rules.className = 'gift-rule-fields'; const quantityLabel = document.createElement('label'); quantityLabel.textContent = 'Minimum order quantity'; quantityLabel.append(minQuantity); const categoryLabel = document.createElement('label'); categoryLabel.textContent = 'Gift category'; categoryLabel.append(giftCategory); rules.append(quantityLabel, categoryLabel); picker.before(rules); } }); document.querySelectorAll('#adEditForm, #adForm, #campaignForm').forEach(form => { form.noValidate = true; }); }
+function decorateAdminForms() { const categoryOptions = '<option value="">ক্যাটাগরি নির্বাচন করুন</option>' + getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join(''); document.querySelectorAll('#productForm, #productEditForm').forEach(form => { form.noValidate = true; const field = form.querySelector('[name="category"]'); if (field && field.tagName !== 'SELECT') { const select = document.createElement('select'); select.name = 'category'; select.required = true; select.innerHTML = categoryOptions; select.value = field.value || getActiveCategories()[0]?.name || ''; field.replaceWith(select); } }); document.querySelectorAll('#giftForm, #giftEditForm').forEach(form => { form.noValidate = true; const placeholders = {title:'Gift-এর নাম',image:'Gift image URL',stock:'Gift stock',quantity:'এক অর্ডারে কতটি gift',minQuantity:'কতটি selected product কিনলে gift পাবেন'}; Object.entries(placeholders).forEach(([name, text]) => { const field = form.querySelector(`[name="${name}"]`); if (field) field.placeholder = text; }); if (!form.querySelector('[name="minQuantity"]')) { const input = document.createElement('input'); input.name = 'minQuantity'; input.type = 'number'; input.min = '1'; const giftId = form.querySelector('[name="id"]')?.value; input.value = giftId ? String(gifts.find(gift => gift.id === Number(giftId))?.minQuantity || 1) : '1'; input.placeholder = placeholders.minQuantity; const category = form.querySelector('[name="giftCategory"]'); (category || form.querySelector('[name="expiresAt"]'))?.before(input); } const picker = form.querySelector('.campaign-picker'); const minQuantity = form.querySelector('[name="minQuantity"]'); const giftCategory = form.querySelector('[name="giftCategory"]'); if (picker && minQuantity && giftCategory && !form.querySelector('.gift-rule-fields')) { const rules = document.createElement('div'); rules.className = 'gift-rule-fields'; const quantityLabel = document.createElement('label'); quantityLabel.textContent = 'Minimum order quantity'; quantityLabel.append(minQuantity); const categoryLabel = document.createElement('label'); categoryLabel.textContent = 'Gift category'; categoryLabel.append(giftCategory); rules.append(quantityLabel, categoryLabel);
+      const subcategoryField = form.querySelector('[name="giftSubcategory"]');
+      if (subcategoryField) rules.append(subcategoryField);
+      picker.before(rules); } }); document.querySelectorAll('#adEditForm, #adForm, #campaignForm').forEach(form => { form.noValidate = true; }); }
 function prepareProductMediaInputs() { document.querySelectorAll('#productForm, #productEditForm').forEach(form => { const legacyImage = form.querySelector('[name="image"]'); if (!legacyImage || form.querySelector('.product-media-fields')) return; legacyImage.required = false; legacyImage.placeholder = 'Primary image URL (optional)'; legacyImage.insertAdjacentHTML('afterend', '<div class="product-media-fields" style="display:grid;gap:10px;padding:12px 0"><label style="display:grid;gap:6px;font-weight:700">ছবি নির্বাচন করুন (একাধিক দেওয়া যাবে)<input name="images" type="file" accept="image/*" multiple style="display:block;width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;background:#fff"></label><small style="display:block">প্রথম ছবিটি সব product card, cart ও checkout-এ দেখাবে।</small><label style="display:grid;gap:6px;font-weight:700">ভিডিও নির্বাচন করুন (একাধিক দেওয়া যাবে)<input name="videos" type="file" accept="video/*" multiple style="display:block;width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;background:#fff"></label><small style="display:block">Image সর্বোচ্চ 10MB এবং video সর্বোচ্চ 100MB।</small></div>'); }); }
 function bindEditorForms() { const productForm = $('#productEditForm'); if (productForm) productForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); void saveProductEdit(productForm); }; const campaignForm = $('#adEditForm'); if (campaignForm) campaignForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveCampaignEdit(campaignForm); }; const giftForm = $('#giftEditForm'); if (giftForm) giftForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveGiftEdit(giftForm); }; const mallForm = $('#mallForm'); if (mallForm) mallForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveMallSettings(mallForm); }; }
-async function saveProductEdit(form) { const data = Object.fromEntries(new FormData(form)); const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const requestedPrimary = String(data.image || '').trim(); let images = productImages(product); if (requestedPrimary && requestedPrimary !== primaryProductImage(product)) images = [requestedPrimary, ...images.filter(url => url !== requestedPrimary)]; images = [...images, ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image দিন'); const videos = [...productVideos(product), ...uploaded.videos]; Object.assign(product, normaliseProductMedia({name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:product.rating || '4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos,description:data.description || ''})); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
-async function createProductFromForm(form) { const data = Object.fromEntries(new FormData(form)); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const manualImage = String(data.image || '').trim(); const images = [...(manualImage ? [manualImage] : []), ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image upload বা URL দিন'); products.unshift(normaliseProductMedia({id:Date.now(),name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos:uploaded.videos,description:data.description || ''})); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+async function saveProductEdit(form) { const data = Object.fromEntries(new FormData(form)); const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const requestedPrimary = String(data.image || '').trim(); let images = productImages(product); if (requestedPrimary && requestedPrimary !== primaryProductImage(product)) images = [requestedPrimary, ...images.filter(url => url !== requestedPrimary)]; images = [...images, ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image দিন'); const videos = [...productVideos(product), ...uploaded.videos]; const previousCategory = product.category; Object.assign(product, normaliseProductMedia({name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:product.rating || '4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos,description:data.description || ''})); syncProductCategoryMembership(product, previousCategory); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+async function createProductFromForm(form) { const data = Object.fromEntries(new FormData(form)); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const manualImage = String(data.image || '').trim(); const images = [...(manualImage ? [manualImage] : []), ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image upload বা URL দিন'); const newProduct = normaliseProductMedia({id:Date.now(),name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos:uploaded.videos,description:data.description || ''}); products.unshift(newProduct); syncProductCategoryMembership(newProduct); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+function saveManagedCategoryForm(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const id = String(data.id || '').trim();
+  const name = String(data.name || '').trim();
+  const image = String(data.image || '').trim();
+
+  if (!name) return showToast('Category name দিন');
+
+  const duplicate = categories.find(item => item.name === name && String(item.id) !== id);
+  if (duplicate) return showToast('এই category আগে থেকেই আছে');
+
+  const selectedProductIds = [...form.querySelectorAll('[name="categoryProducts"]:checked')].map(input => Number(input.value));
+
+  const subcategoryList = [...form.querySelectorAll('[data-subcategory-row]')].map(row => ({
+    id: row.dataset.subcategoryId || `sub-${Date.now()}`,
+    name: row.querySelector('.category-subcategory-content > b')?.textContent?.trim() || '',
+    productIds: [...row.querySelectorAll('[data-subcategory-product]:checked')].map(input => Number(input.value))
+  })).filter(item => item.name);
+
+  if (id) {
+    const category = categories.find(item => String(item.id) === id);
+    if (!category) return showToast('Category পাওয়া যায়নি');
+
+    const oldName = category.name;
+    Object.assign(category, {
+      name,
+      image,
+      active: data.active === 'on',
+      productIds: selectedProductIds,
+      subcategories: subcategoryList
+    });
+
+    products.forEach(product => {
+      if (product.category === oldName) product.category = name;
+    });
+    ads.forEach(ad => {
+      if (ad.targetCategory === oldName) ad.targetCategory = name;
+    });
+    gifts.forEach(gift => {
+      if (gift.giftCategory === oldName) gift.giftCategory = name;
+    });
+  } else {
+    categories.push({
+      id: `cat-${Date.now()}`,
+      name,
+      image,
+      active: data.active === 'on',
+      subcategories: subcategoryList,
+      productIds: selectedProductIds
+    });
+  }
+
+  saveState();
+  renderCategories();
+  renderProducts();
+  renderAdmin();
+  showToast(id ? 'Category update হয়েছে' : 'নতুন category তৈরি হয়েছে');
+}
+
 document.addEventListener('submit', event => { if (event.target.id === 'productForm') { event.preventDefault(); event.stopImmediatePropagation(); void createProductFromForm(event.target); } }, true);
 function saveCampaignEdit(form) { const data = Object.fromEntries(new FormData(form)); const ad = ads.find(item => item.id === Number(data.id)); if (!ad) return showToast('Campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.text?.trim() || !data.image?.trim()) return showToast('Campaign-এর title, text ও image দিন'); const selectedProductIds = [...form.querySelectorAll('[name="campaignProducts"]:checked')].map(input => Number(input.value)); Object.assign(ad, {title:data.title.trim(),text:data.text.trim(),image:data.image.trim(),link:data.link || '#campaign',expiresAt:data.expiresAt || '',targetCategory:data.targetCategory || '',productIds:selectedProductIds}); saveState(); closeModal('ordersModal'); renderAds(); renderProducts(); renderAdmin(); showToast(`${selectedProductIds.length}টি product সহ campaign updated`); }
-function saveGiftEdit(form) { const data = Object.fromEntries(new FormData(form)); const gift = gifts.find(item => item.id === Number(data.id)); if (!gift) return showToast('Gift campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.image?.trim()) return showToast('Gift title ও image দিন'); Object.assign(gift, {title:data.title.trim(),image:data.image.trim(),stock:Number(data.stock || 0),quantity:Number(data.quantity || 1),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:Number(data.stock) > 0}); saveState(); closeModal('ordersModal'); renderGifts(); renderAdmin(); showToast('Gift campaign updated'); }
+function saveGiftEdit(form) { const data = Object.fromEntries(new FormData(form)); const gift = gifts.find(item => item.id === Number(data.id)); if (!gift) return showToast('Gift campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.image?.trim()) return showToast('Gift title ও image দিন'); Object.assign(gift, {title:data.title.trim(),image:data.image.trim(),stock:Number(data.stock || 0),quantity:Number(data.quantity || 1),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',giftSubcategory:data.giftSubcategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:Number(data.stock) > 0}); saveState(); closeModal('ordersModal'); renderGifts(); renderAdmin(); showToast('Gift campaign updated'); }
 function saveMallSettings(form) { mallSettings = {productIds:[...form.querySelectorAll('[name="mallProducts"]:checked')].map(input => Number(input.value))}; saveState(); renderAdmin(); showToast(`${mallSettings.productIds.length}টি Ziyana Shop product updated`); }
 document.addEventListener('submit', event => { if (event.target.id === 'authForm' && window.laibaSupabase) { event.preventDefault(); event.stopImmediatePropagation(); void handleCloudAuth(Object.fromEntries(new FormData(event.target))); } }, true);
 document.addEventListener('submit', event => { if (event.target.id === 'checkoutForm' && window.laibaSupabase) setTimeout(() => { const order = orders[orders.length - 1]; if (order && !order.cloudId) order.cloudId = crypto.randomUUID(); if (order) void persistCloudOrder(order); }, 0); }, true);
 if (window.laibaSupabase) window.laibaSupabase.auth.onAuthStateChange(() => setTimeout(() => void loadCloudOrders(), 0));
-function renderCategories() { $('#categoryGrid').innerHTML = defaultCategories.map(([name, image]) => `<a class="category-card" href="#${name === 'ফ্যাশন' ? 'fashionProducts' : 'beautyProducts'}" data-category="${escapeHtml(name)}"><img src="${image}" alt="${escapeHtml(name)}" loading="lazy"><b>${escapeHtml(name)}</b></a>`).join(''); }
+function getActiveCategories() {
+  return (Array.isArray(categories) ? categories : defaultCategories)
+    .filter(category => category && category.active !== false)
+    .map(category => ({
+      id: String(category.id || category.name || '').trim(),
+      name: String(category.name || '').trim(),
+      image: String(category.image || '').trim(),
+      subcategories: Array.isArray(category.subcategories) ? category.subcategories : [], productIds: Array.isArray(category.productIds) ? category.productIds.map(Number) : []
+    }))
+    .filter(category => category.name);
+}
+function getCategoryByName(name) {
+  return getActiveCategories().find(category => category.name === String(name || '').trim());
+}
+function renderCategorySubcategoryList(category) {
+  const list = $('#categorySubcategoryList');
+  if (!list) return;
+
+  list.innerHTML = (category?.subcategories || []).map((item, index) => {
+    const name = typeof item === 'string' ? item : item?.name || '';
+    const id = typeof item === 'object' ? (item.id || `sub-${index}`) : `sub-${index}`;
+    const selected = new Set((typeof item === 'object' && Array.isArray(item?.productIds) ? item.productIds : []).map(Number));
+
+    return `<div class="admin-list-row category-subcategory-row" data-subcategory-row="${index}" data-subcategory-id="${escapeHtml(id)}">
+      <div class="category-subcategory-content">
+        <b>${escapeHtml(name)}</b>
+        <div class="campaign-picker">
+          ${products.map(product => `<label><input type="checkbox" data-subcategory-product="${index}" value="${product.id}" ${selected.has(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}
+        </div>
+      </div>
+      <button type="button" class="outline-button danger-button" data-remove-subcategory="${index}">Remove</button>
+    </div>`;
+  }).join('');
+}
+
+function renderCategoryProductPicker(category) {
+  const picker = $('#categoryProductPicker');
+  if (!picker) return;
+  const selected = new Set((category?.productIds || []).map(Number));
+  picker.innerHTML = products.map(product => `<label><input type="checkbox" name="categoryProducts" value="${product.id}" ${selected.has(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${escapeHtml(product.category || '')} · ${money(product.price)}</small></label>`).join('');
+}
+
+function getSubcategoryProducts(category, subcategoryName) {
+  const subcategory = (category?.subcategories || []).find(item =>
+    String(typeof item === 'string' ? item : item?.name || '').trim() === String(subcategoryName || '').trim()
+  );
+  if (!subcategory || typeof subcategory === 'string') return [];
+  const ids = new Set((subcategory.productIds || []).map(Number));
+  return products.filter(product => ids.has(Number(product.id)));
+}
+
+function productMatchesCategory(product, categoryName) {
+  const category = getActiveCategories().find(item => item.name === String(categoryName || '').trim());
+  if (!category) return false;
+  return (category.productIds || []).map(Number).includes(Number(product.id));
+}
+
+function productMatchesSubcategory(product, categoryName, subcategoryName) {
+  const category = getActiveCategories().find(item =>
+    item.name === String(categoryName || '').trim()
+  );
+  const subcategory = (category?.subcategories || []).find(item =>
+    String(typeof item === 'string' ? item : item?.name || '').trim() === String(subcategoryName || '').trim()
+  );
+  return !!subcategory &&
+    Array.isArray(subcategory.productIds) &&
+    subcategory.productIds.map(Number).includes(Number(product.id));
+}
+
+function getSubcategoryOptions(categoryName, selectedName = '') {
+  const category = getActiveCategories().find(item =>
+    item.name === String(categoryName || '').trim()
+  );
+  const subcategories = Array.isArray(category?.subcategories)
+    ? category.subcategories
+    : [];
+
+  return `<option value="">সব subcategory</option>${subcategories.map(item => {
+    const name = typeof item === 'string' ? item : item?.name || '';
+    return `<option value="${escapeHtml(name)}" ${name === selectedName ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+  }).join('')}`;
+}
+
+function getGiftTargetProducts(gift) {
+  const selectedIds = new Set((gift.productIds || []).map(Number));
+
+  if (selectedIds.size) {
+    return products.filter(product => selectedIds.has(Number(product.id)));
+  }
+
+  if (gift.giftSubcategory && gift.giftCategory) {
+    return products.filter(product =>
+      productMatchesSubcategory(product, gift.giftCategory, gift.giftSubcategory)
+    );
+  }
+
+  if (gift.giftCategory) {
+    return products.filter(product =>
+      productMatchesCategory(product, gift.giftCategory)
+    );
+  }
+
+  return products;
+}
+
+function syncProductCategoryMembership(product, previousCategory = '') {
+  const productId = Number(product.id);
+  if (previousCategory && previousCategory !== product.category) {
+    const oldCategory = categories.find(item => item.name === previousCategory);
+    if (oldCategory && Array.isArray(oldCategory.productIds)) {
+      oldCategory.productIds = oldCategory.productIds.filter(id => Number(id) !== productId);
+    }
+  }
+  const category = categories.find(item => item.name === product.category);
+  if (category) {
+    category.productIds = Array.isArray(category.productIds) ? category.productIds.map(Number) : [];
+    if (!category.productIds.includes(productId)) category.productIds.push(productId);
+  }
+}
+
+function getCategoryProducts(categoryName) {
+  const category = getActiveCategories().find(item => item.name === String(categoryName || '').trim());
+  if (!category) return [];
+
+  const ids = Array.isArray(category.productIds) ? category.productIds.map(Number) : [];
+  if (ids.length || Array.isArray(category.productIds)) {
+    const selected = new Set(ids);
+    return products.filter(product => selected.has(Number(product.id)));
+  }
+
+  return products.filter(product => String(product.category || '').trim() === String(categoryName || '').trim());
+}
+function renderCategories() {
+  const grid = $('#categoryGrid');
+  if (!grid) return;
+
+  grid.innerHTML = getActiveCategories().map(category => {
+    const subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
+    return `<div class="category-menu-item">
+      <a class="category-card" href="#category-${escapeHtml(category.id)}" data-category="${escapeHtml(category.name)}">
+        <img src="${escapeHtml(category.image)}" alt="${escapeHtml(category.name)}" loading="lazy">
+        <b>${escapeHtml(category.name)}</b>
+      </a>
+      ${subcategories.length ? `<div class="category-hover-menu">
+        ${subcategories.map(item => {
+          const name = typeof item === 'string' ? item : item?.name || '';
+          return `<button type="button" data-category-subcategory="${escapeHtml(name)}" data-category-id="${escapeHtml(category.id)}">${escapeHtml(name)}</button>`;
+        }).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
 function renderCampaignBanner() { const title = $('#campaignBannerTitle'); const subtitle = $('#campaignBannerSubtitle'); const text = $('#campaignBannerText'); const image = $('#campaignBannerImage'); const discount = $('#campaignBannerDiscount'); if (title) title.textContent = campaignSettings.title; if (subtitle) subtitle.textContent = campaignSettings.subtitle; if (text) text.textContent = campaignSettings.text; if (image) { image.src = campaignSettings.image; image.alt = campaignSettings.title; } if (discount) discount.textContent = campaignSettings.discount; }
 function renderHero() { const tagTop = $('#heroTagTop'); const tagBottom = $('#heroTagBottom'); const image = $('#heroBannerImage'); const cardTitle = $('#heroCardTitle'); const cardOffer = $('#heroCardOffer'); if (tagTop) tagTop.textContent = heroSettings.tagTop; if (tagBottom) tagBottom.textContent = heroSettings.tagBottom; if (image) { image.src = heroSettings.image; image.alt = heroSettings.cardTitle; } if (cardTitle) cardTitle.textContent = heroSettings.cardTitle; if (cardOffer) cardOffer.textContent = heroSettings.cardOffer; }
 function renderAds() { $('#adGrid').innerHTML = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date())).map(ad => `<article class="ad-card" data-ad-view="${ad.id}"><img src="${escapeHtml(ad.image)}" alt="${escapeHtml(ad.title)}" loading="lazy"><span><small>ZIYANA SHOP CAMPAIGN</small><b>${escapeHtml(ad.title)}</b><em>${escapeHtml(ad.text)}</em></span><strong>↗</strong></article>`).join(''); }
 function getPublicGift() { return gifts.find(gift => gift.active && (!gift.expiresAt || new Date(gift.expiresAt) > new Date())); }
 function renderGifts() { const gift = getPublicGift(); const stockLabel = gift?.stock > 0 ? `${gift.stock}টি gift stock বাকি` : 'Gift stock শেষ'; $('#giftGrid').innerHTML = gift ? `<article class="gift-card ${gift.stock > 0 ? '' : 'gift-out-of-stock'}" data-gift-view="${gift.id}"><img src="${escapeHtml(gift.image)}" alt="${escapeHtml(gift.title)}"><div><p class="eyebrow">FREE GIFT CAMPAIGN</p><h3>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h3><p>নির্বাচিত campaign, category বা product কিনলে checkout-এ free পাবেন।</p><small>${stockLabel} · বিস্তারিত দেখতে ক্লিক করুন</small></div><strong>↗</strong></article>` : '<p class="empty-state">এই মুহূর্তে কোনো free gift campaign নেই।</p>'; }
-function getCampaignProducts() { const activeAds = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date())); const ids = new Set(activeAds.flatMap(ad => ad.productIds || [])); const categories = new Set(activeAds.filter(ad => ad.targetCategory).map(ad => ad.targetCategory)); const selected = products.filter(product => ids.has(product.id) || categories.has(product.category)); return ids.size || categories.size ? selected : products.filter(product => ['ফ্যাশন','বিউটি'].includes(product.category)); }
+function getCampaignProducts() {
+  const activeAds = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date()));
+  const ids = new Set(activeAds.flatMap(ad => ad.productIds || []).map(Number));
+  const targetCategories = new Set(activeAds.filter(ad => ad.targetCategory).map(ad => ad.targetCategory));
+  const selected = products.filter(product => ids.has(Number(product.id)) || [...targetCategories].some(name => productMatchesCategory(product, name)));
+  if (ids.size || targetCategories.size) return selected;
+
+  const managed = getActiveCategories().flatMap(category => getCategoryProducts(category.name));
+  const unique = new Map(managed.map(product => [Number(product.id), product]));
+  return unique.size ? [...unique.values()] : products;
+}
 function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy"><button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
 function renderNewArrivals() { const selectedIds = new Set((campaignSettings.productIds || []).map(Number)); const selected = products.filter(product => selectedIds.has(Number(product.id))).slice(0, 5); const grid = $('#newArrivalProductGrid'); if (grid) grid.innerHTML = selected.length ? selected.map(productMarkup).join('') : '<p class="empty-state">Admin panel থেকে New arrival products select করুন।</p>'; }
-function renderCategoryRows() { ['ফ্যাশন','বিউটি'].forEach(category => { const key = category === 'ফ্যাশন' ? 'fashion' : 'beauty'; const list = products.filter(product => product.category === category); const visible = showingAllProducts || window[`${key}ShowingAll`] ? list : list.slice(0, 4); const grid = $(`#${key}ProductGrid`); if (grid) grid.innerHTML = visible.length ? visible.map(productMarkup).join('') : '<p class="empty-state">এই category-তে কোনো product নেই।</p>'; }); }
+function renderCategoryRows() {
+  const container = $('#dynamicCategorySections');
+  if (!container) return;
+
+  container.innerHTML = getActiveCategories().map(category => {
+    const key = String(category.id).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const selectedSubcategory = window[`${key}Subcategory`] || '';
+    const list = selectedSubcategory
+      ? getSubcategoryProducts(category, selectedSubcategory)
+      : getCategoryProducts(category.name);
+    const visible = showingAllProducts || window[`${key}ShowingAll`] ? list : list.slice(0, 4);
+    const subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
+
+    return `<section class="category-product-section" id="category-${escapeHtml(category.id)}" data-category-section="${escapeHtml(category.id)}">
+      <div class="section-heading deal-heading">
+        <div><p class="eyebrow coral">CURATED FOR YOU</p><h2>${escapeHtml(category.name)}</h2></div>
+        ${list.length > 4 ? `<button class="see-more-button" data-category-more="${escapeHtml(category.name)}">See more <span>↓</span></button>` : ''}
+      </div>
+      ${subcategories.length ? `<div class="category-subcategory-filters">
+        <button class="${selectedSubcategory ? 'outline-button' : 'primary-button'}" data-category-subcategory="" data-category-id="${escapeHtml(category.id)}">সব</button>
+        ${subcategories.map(item => {
+          const name = typeof item === 'string' ? item : item?.name || '';
+          return `<button class="${selectedSubcategory === name ? 'primary-button' : 'outline-button'}" data-category-subcategory="${escapeHtml(name)}" data-category-id="${escapeHtml(category.id)}">${escapeHtml(name)}</button>`;
+        }).join('')}
+      </div>` : ''}
+      <div class="product-grid" data-category-grid="${escapeHtml(category.id)}">
+        ${visible.length ? visible.map(productMarkup).join('') : '<p class="empty-state">এই category-তে কোনো product নেই।</p>'}
+      </div>
+    </section>`;
+  }).join('');
+}
+
 function renderProducts(list = getCampaignProducts()) { renderNewArrivals(); renderCategoryRows(); }
-function getActiveGift() { return gifts.find(gift => { const selectedIds = new Set((gift.productIds || []).map(Number)); const selectedQuantity = cart.filter(item => selectedIds.has(Number(item.id))).reduce((total, item) => total + item.quantity, 0); const productMatch = selectedIds.size > 0 && selectedQuantity >= Number(gift.minQuantity || 1); const categoryMatch = gift.giftCategory && cart.some(item => item.category === gift.giftCategory); const hasTarget = selectedIds.size || gift.giftCategory; const quantityReady = selectedIds.size ? productMatch : categoryMatch; return gift.active && gift.stock > 0 && (!gift.expiresAt || new Date(gift.expiresAt) > new Date()) && (!hasTarget || quantityReady); }); }
+function getActiveGift() { return gifts.find(gift => { const selectedIds = new Set((gift.productIds || []).map(Number)); const selectedQuantity = cart.filter(item => selectedIds.has(Number(item.id))).reduce((total, item) => total + item.quantity, 0); const productMatch = selectedIds.size > 0 && selectedQuantity >= Number(gift.minQuantity || 1); const categoryMatch = gift.giftCategory && cart.some(item => productMatchesCategory(item, gift.giftCategory)); const hasTarget = selectedIds.size || gift.giftCategory; const quantityReady = selectedIds.size ? productMatch : categoryMatch; return gift.active && gift.stock > 0 && (!gift.expiresAt || new Date(gift.expiresAt) > new Date()) && (!hasTarget || quantityReady); }); }
 function updateCart() {
   const count = cart.reduce((total, item) => total + item.quantity, 0);
   const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -330,9 +596,20 @@ function renderOrders() {
   const mine = currentUser ? orders.filter(order => order.userId === currentUser.id) : [];
   $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">MY DASHBOARD</p><h2>অর্ডার ও রিভিউ</h2><p>Order ID, mobile বা email দিয়ে shipment track করতে পারবেন।</p></div><div class="track-row"><input id="trackInput" placeholder="Order ID / mobile / email"><button class="outline-button" data-action="track-order">Track</button></div>${mine.length ? `<div class="order-list">${mine.slice().reverse().map(order => `<article class="order-card"><div><b>Order #${order.id}</b><small>${escapeHtml(order.createdAt)}</small></div><span class="status ${order.status}">${escapeHtml(order.statusLabel)}</span><strong>${money(order.total)}</strong><p>${order.items.map(item => { const reviewed = reviews.some(review => review.orderId === order.id && review.productId === item.id); const reviewAction = order.status === 'delivered' ? (reviewed ? ' · Reviewed' : ` <button class="mini-button" data-review-product="${item.id}" data-review-order="${order.id}">Review</button>`) : ''; return `${escapeHtml(item.name)} × ${item.quantity}${reviewAction}`; }).join(', ')}</p>${order.trackingUrl ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>` : order.bookingNumber ? `<small>Courier: ${escapeHtml(order.courierName || 'Manual')} · Booking: ${escapeHtml(order.bookingNumber)}</small>` : ''}</article>`).join('')}</div>` : '<div class="empty-state">এখনও কোনো অর্ডার নেই।</div>'}`;
 }
-function showGiftDetails(giftId) { const gift = gifts.find(item => item.id === Number(giftId)); if (!gift) return; const selected = products.filter(product => (gift.productIds || []).includes(product.id) || (gift.giftCategory && product.category === gift.giftCategory)); const cards = selected.map(product => `<article class="product-card"><div class="product-image"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}"><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>ব্যাগে যোগ করুন</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2><p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
-function showAdDetails(adId) { const ad = ads.find(item => item.id === Number(adId)); if (!ad) return; const selected = products.filter(product => (ad.productIds || []).includes(product.id) || (ad.targetCategory && product.category === ad.targetCategory)); const cards = selected.map(productMarkup).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP CAMPAIGN</p><h2>${escapeHtml(ad.title)}</h2><p>${escapeHtml(ad.text)}</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
-function showMallProducts() { const selectedIds = new Set((mallSettings.productIds || []).map(Number)); const selected = selectedIds.size ? products.filter(product => selectedIds.has(Number(product.id))) : products.filter(product => ['ফ্যাশন','বিউটি'].includes(product.category)); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP VERIFIED</p><h2>Ziyana Shop products</h2><p>Admin panel থেকে বাছাই করা products দেখুন।</p></div><div class="campaign-product-grid">${selected.map(productMarkup).join('') || '<p class="empty-state">এখনও কোনো Ziyana Shop product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
+function showGiftDetails(giftId) { const gift = gifts.find(item => item.id === Number(giftId)); if (!gift) return; const selected = products.filter(product => (gift.productIds || []).map(Number).includes(Number(product.id)) || (gift.giftCategory && productMatchesCategory(product, gift.giftCategory))); const cards = selected.map(product => `<article class="product-card"><div class="product-image"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}"><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>ব্যাগে যোগ করুন</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2><p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
+function showAdDetails(adId) { const ad = ads.find(item => item.id === Number(adId)); if (!ad) return; const selected = products.filter(product => (ad.productIds || []).map(Number).includes(Number(product.id)) || (ad.targetCategory && productMatchesCategory(product, ad.targetCategory))); const cards = selected.map(productMarkup).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP CAMPAIGN</p><h2>${escapeHtml(ad.title)}</h2><p>${escapeHtml(ad.text)}</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
+function showMallProducts() {
+  const selectedIds = new Set((mallSettings.productIds || []).map(Number));
+  let selected = selectedIds.size
+    ? products.filter(product => selectedIds.has(Number(product.id)))
+    : getActiveCategories().flatMap(category => getCategoryProducts(category.name));
+
+  const unique = new Map(selected.map(product => [Number(product.id), product]));
+  selected = [...unique.values()];
+
+  $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP VERIFIED</p><h2>Ziyana Shop products</h2><p>Admin panel থেকে বাছাই করা products দেখুন।</p></div><div class="campaign-product-grid">${selected.map(productMarkup).join('') || '<p class="empty-state">এখনও কোনো Ziyana Shop product select করা হয়নি।</p>'}</div>`;
+  openModal('campaignViewModal');
+}
 function showInfoPage(page) { const content = page === 'returns' ? {eyebrow:'RETURN POLICY',title:'সহজ রিটার্ন, নিশ্চিন্ত শপিং',text:'পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে রিটার্নের অনুরোধ করতে পারবেন। পণ্যটি অব্যবহৃত, অক্ষত এবং মূল packaging-সহ থাকতে হবে।'} : {eyebrow:'HELP CENTER',title:'কীভাবে আমরা সাহায্য করতে পারি?',text:'Order tracking, delivery, payment অথবা return নিয়ে সাহায্যের জন্য Order ID ও mobile number সঙ্গে রাখুন। আমাদের support team আপনার অনুরোধ যাচাই করে দ্রুত উত্তর দেবে।'}; $('#infoContent').innerHTML = `<div class="info-page"><p class="eyebrow">${content.eyebrow}</p><h2>${content.title}</h2><p>${content.text}</p><div class="info-points"><div><b>01</b><span>Order ID দিয়ে status দেখুন</span></div><div><b>02</b><span>প্রয়োজনে support-এ যোগাযোগ করুন</span></div><div><b>03</b><span>সঠিক তথ্য দিয়ে request পাঠান</span></div></div></div>`; openModal('infoModal'); }
 function renderOrderTracker() { $('#ordersContent').innerHTML = `<div class="info-page"><p class="eyebrow">ORDER TRACKER</p><h2>আপনার order কোথায়?</h2><p>Order number, mobile অথবা email দিয়ে খুঁজুন।</p><div class="track-row"><input id="publicTrackInput" placeholder="Order ID / mobile / email"><button class="primary-button" data-action="public-track-order">Track order</button></div><div id="publicTrackResult"></div></div>`; openModal('ordersModal'); }
 function openOrders() { if (!currentUser) return openAuth('login'); renderOrders(); openModal('ordersModal'); }
@@ -385,6 +662,8 @@ function renderAdmin() {
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>New arrival</h3><form id="campaignForm" class="admin-form"><input name="title" value="${escapeHtml(campaignSettings.title)}" placeholder="Banner title" required><input name="subtitle" value="${escapeHtml(campaignSettings.subtitle)}" placeholder="Banner subtitle" required><textarea name="text" placeholder="Banner description" required>${escapeHtml(campaignSettings.text)}</textarea><input name="image" type="url" value="${escapeHtml(campaignSettings.image)}" placeholder="Banner image URL" required><input name="discount" value="${escapeHtml(campaignSettings.discount)}" placeholder="Discount badge, e.g. 50%" required><fieldset class="campaign-picker"><legend>New arrival products tick করুন (সর্বোচ্চ ৫টি)</legend>${products.map(product => `<label><input type="checkbox" name="curatedProducts" value="${product.id}" ${(campaignSettings.productIds || []).includes(product.id) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">New arrival save করুন</button></form></section>`);
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Hero banner</h3><form id="heroForm" class="admin-form"><input name="tagTop" value="${escapeHtml(heroSettings.tagTop)}" placeholder="Top label" required><input name="tagBottom" value="${escapeHtml(heroSettings.tagBottom)}" placeholder="Bottom label" required><input name="image" type="url" value="${escapeHtml(heroSettings.image)}" placeholder="Hero image URL" required><input name="cardTitle" value="${escapeHtml(heroSettings.cardTitle)}" placeholder="Floating card title" required><input name="cardOffer" value="${escapeHtml(heroSettings.cardOffer)}" placeholder="Offer text" required><button class="primary-button" type="submit">Hero banner save করুন</button></form></section>`);
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Ziyana Shop products</h3><form id="mallForm" class="admin-form"><p class="form-help">Ziyana Shop-এ দেখানোর products tick করুন। কোনোটি select না করলে Fashion ও Beauty-এর products দেখাবে।</p><fieldset class="campaign-picker"><legend>Ziyana Shop product selection</legend>${products.map(product => `<label><input type="checkbox" name="mallProducts" value="${product.id}" ${(mallSettings.productIds || []).map(Number).includes(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">Ziyana Shop update করুন</button></form></section>`);
+  $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Category Management</h3><div class="category-admin-tools"><form id="categoryForm" class="admin-form"><input type="hidden" name="id"><input name="name" placeholder="Category name" required><input name="image" type="url" placeholder="Category image URL"><label><input type="checkbox" name="active" checked> Active category</label><div class="category-product-picker"><b>এই category-তে products</b><div id="categoryProductPicker"></div></div><div class="category-subcategory-tools"><b>Subcategories</b><div id="categorySubcategoryList"></div><div class="two-fields"><input name="newSubcategory" placeholder="নতুন subcategory"><button class="outline-button" type="button" data-add-subcategory>Add subcategory</button></div></div><button class="primary-button" type="submit">Category save করুন</button></form><div class="admin-list" id="adminCategoryList">${(Array.isArray(categories) ? categories : defaultCategories).map(category => `<div class="admin-list-row"><span><b>${escapeHtml(category.name)}</b><small>${(category.subcategories || []).length} subcategory · ${Array.isArray(category.productIds) ? category.productIds.length : 0} products · ${category.active === false ? 'Hidden' : 'Active'}</small></span><span class="row-actions"><button class="outline-button" data-edit-category="${escapeHtml(category.id)}">Edit</button><button class="outline-button danger-button" data-delete-category="${escapeHtml(category.id)}">Remove</button></span></div>`).join('')}</div></div></section>`);
+
   setupAdminWorkspace();
   openModal('adminModal');
 }
@@ -393,6 +672,35 @@ function setupAdminWorkspace() {
   const admin = $('#adminContent');
   const adForm = $('#adForm');
   const giftForm = $('#giftForm');
+  const categoryForm = $('#categoryForm');
+  if (categoryForm) {
+    categoryForm.noValidate = true;
+    const saveCategoryButton = categoryForm.querySelector('button[type="submit"]');
+
+    if (saveCategoryButton) {
+      saveCategoryButton.onclick = event => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        if (!categoryForm.checkValidity()) {
+          categoryForm.reportValidity();
+          return;
+        }
+
+        try {
+          saveManagedCategoryForm(categoryForm);
+        } catch (error) {
+          console.error('Category save failed:', error);
+          showToast(error?.message || 'Category save হয়নি');
+        }
+      };
+    }
+
+    categoryForm.onsubmit = event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+  }
   const productSection = [...admin.querySelectorAll('.admin-section')].find(section => section.querySelector('h3')?.textContent.includes('পণ্য তালিকা'));
   if (productSection) {
     productSection.classList.add('admin-card');
@@ -411,8 +719,20 @@ function setupAdminWorkspace() {
     if (heading && !section.querySelector('[data-admin-toggle]')) heading.insertAdjacentHTML('afterend', '<button class="admin-card-toggle" type="button" data-admin-toggle>Open</button>');
     section.classList.add('is-collapsed');
   });
-  if (giftForm && !giftForm.querySelector('[name="giftCategory"]')) giftForm.insertAdjacentHTML('beforeend', `<select name="giftCategory"><option value="">সব category</option>${[...new Set(products.map(product => product.category))].map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('')}</select>`);
-    if (adForm && !adForm.querySelector('[name="campaignTarget"]')) adForm.insertAdjacentHTML('beforeend', `<select name="campaignTarget"><option value="all">সব campaign products</option><option value="category">Category target</option><option value="product">Selected products</option></select><select name="targetCategory"><option value="">Category select করুন</option>${[...new Set(products.map(product => product.category))].map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('')}</select>`);
+  if (giftForm && !giftForm.querySelector('[name="giftCategory"]')) {
+  giftForm.insertAdjacentHTML('beforeend', `<select name="giftCategory"><option value="">সব category</option>${getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('')}</select>`);
+  const giftCategory = giftForm.querySelector('[name="giftCategory"]');
+  const giftSubcategory = document.createElement('select');
+  giftSubcategory.name = 'giftSubcategory';
+  giftSubcategory.innerHTML = '<option value="">সব subcategory</option>';
+  giftCategory.insertAdjacentElement('afterend', giftSubcategory);
+  const refreshGiftTarget = () => {
+    giftSubcategory.innerHTML = getSubcategoryOptions(giftCategory.value);
+  };
+  giftCategory.addEventListener('change', refreshGiftTarget);
+  refreshGiftTarget();
+}
+    if (adForm && !adForm.querySelector('[name="campaignTarget"]')) adForm.insertAdjacentHTML('beforeend', `<select name="campaignTarget"><option value="all">সব campaign products</option><option value="category">Category target</option><option value="product">Selected products</option></select><select name="targetCategory"><option value="">Category select করুন</option>${getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('')}</select>`);
   const orderSection = [...admin.querySelectorAll('.admin-section')].find(section => section.querySelector('h3')?.textContent.includes('সাম্প্রতিক অর্ডার'));
   if (orderSection) {
     const rows = [...orderSection.querySelectorAll('.admin-list-row')];
@@ -443,7 +763,30 @@ renderCategories(); renderAds(); renderHero(); renderCampaignBanner(); renderGif
 void loadCloudState().catch(() => showToast('Cloud data পাওয়া যায়নি, local data ব্যবহার হচ্ছে'));
 $('#searchButton').addEventListener('click', searchProducts); $('#searchInput').addEventListener('keydown', event => { if (event.key === 'Enter') searchProducts(); });
 $('#searchInput').addEventListener('input', event => { const term = event.target.value.trim().toLowerCase(); const matches = products.filter(item => item.name.toLowerCase().includes(term)).slice(0,3); $('#searchSuggestions').innerHTML = matches.map(item => `<div data-suggest="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>`).join(''); $('#searchSuggestions').hidden = !term || !matches.length; });
-document.querySelectorAll('[data-category-more]').forEach(button => button.addEventListener('click', () => { const key = button.dataset.categoryMore === 'ফ্যাশন' ? 'fashion' : 'beauty'; window[`${key}ShowingAll`] = !window[`${key}ShowingAll`]; renderCategoryRows(); button.innerHTML = window[`${key}ShowingAll`] ? 'Show less <span>↑</span>' : 'See more <span>↓</span>'; }));
+document.addEventListener('click', event => {
+  const subcategoryButton = event.target.closest('[data-category-subcategory]');
+  if (subcategoryButton) {
+    event.preventDefault();
+    const key = String(subcategoryButton.dataset.categoryId || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+    window[`${key}Subcategory`] = subcategoryButton.dataset.categorySubcategory || '';
+    window[`${key}ShowingAll`] = false;
+    renderCategoryRows();
+    document.querySelector(`#category-${CSS.escape(subcategoryButton.dataset.categoryId)}`)?.scrollIntoView({behavior:'smooth'});
+    return;
+  }
+
+  const button = event.target.closest('[data-category-more]');
+  if (!button) return;
+
+  event.preventDefault();
+
+  const category = getCategoryByName(button.dataset.categoryMore);
+  if (!category) return;
+
+  const key = String(category.id).replace(/[^a-zA-Z0-9_-]/g, '-');
+  window[`${key}ShowingAll`] = !window[`${key}ShowingAll`];
+  renderCategoryRows();
+});
 $('#closeModal').addEventListener('click', () => closeModal('productModal')); $('#cartButton').addEventListener('click', () => { $('#cartDrawer').classList.add('open'); $('#overlay').hidden = false; }); $('#closeCart').addEventListener('click', () => { $('#cartDrawer').classList.remove('open'); if (!activeModal) $('#overlay').hidden = true; });
 $('#accountButton').addEventListener('click', () => { renderAuth(); openModal('authModal'); }); $('#ordersButton').addEventListener('click', openOrders); $('.checkout-button').addEventListener('click', openCheckout); $('#categoryMenu').addEventListener('click', () => $('#categories').scrollIntoView({behavior:'smooth'}));
 function resetAdminAccount() { const admin = {id:1,name:'Laiba Admin',email:'admin@laiba.shop',phone:'01700000000',password:'admin123',role:'admin',address:''}; users = [admin, ...users.filter(user => user.role !== 'admin')]; currentUser = null; write('laiba_current_user', null); saveState(); }
@@ -475,9 +818,9 @@ document.addEventListener('click', event => {
   if (action === 'public-track-order') { const query = $('#publicTrackInput').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || item.customer.email?.toLowerCase() === query); if (!order) { $('#publicTrackResult').innerHTML = '<p class="empty-state">এই তথ্য দিয়ে কোনো order পাওয়া যায়নি।</p>'; return; } $('#publicTrackResult').innerHTML = `<article class="order-card tracker-result"><div><b>Order #${escapeHtml(order.id)}</b><small>${escapeHtml(order.createdAt)}</small></div><span class="status ${order.status}">${escapeHtml(order.statusLabel)}</span><strong>${money(order.total)}</strong><p>${order.items.map(item => `${escapeHtml(item.name)} × ${item.quantity}`).join(', ')}</p>${order.trackingUrl ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>` : '<small>Courier tracking update হলে এখানে দেখা যাবে।</small>'}</article>`; return; }
   if (action === 'admin-search-order') { const query = $('#adminOrderSearch').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || users.find(user => user.id === item.userId)?.email?.toLowerCase() === query); if (!order) return showToast('Order পাওয়া যায়নি'); return showAdminOrder(order.id); }
   if (action === 'admin-more-orders') { adminOrderLimit = adminOrderLimit >= orders.length ? 10 : orders.length; renderAdmin(); return; }
-  const category = event.target.closest('[data-category]'); if (category) { event.preventDefault(); const target = category.dataset.category === 'ফ্যাশন' ? '#fashionProducts' : '#beautyProducts'; document.querySelector(target)?.scrollIntoView({behavior:'smooth'}); showToast(`${category.dataset.category} ক্যাটাগরির পণ্য দেখানো হচ্ছে`); return; }
+  const category = event.target.closest('[data-category]'); if (category) { event.preventDefault(); const managed = getCategoryByName(category.dataset.category); const target = managed ? `#category-${CSS.escape(managed.id)}` : ''; if (target) document.querySelector(target)?.scrollIntoView({behavior:'smooth'}); showToast(`${category.dataset.category} ক্যাটাগরির পণ্য দেখানো হচ্ছে`); return; }
   const adView = event.target.closest('[data-ad-view]'); if (adView) return showAdDetails(adView.dataset.adView);
-  const editProduct = event.target.closest('[data-edit-product]'); if (editProduct) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(editProduct.dataset.editProduct)); if (!product) return; $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">PRODUCT EDITOR</p><h2>${escapeHtml(product.name)}</h2></div><form id="productEditForm" class="stack-form"><input type="hidden" name="id" value="${product.id}"><input name="name" value="${escapeHtml(product.name)}" placeholder="পণ্যের নাম" required><div class="two-fields"><input name="price" type="number" value="${product.price}" placeholder="দাম" required><input name="old" type="number" value="${product.old}" placeholder="আগের দাম" required></div><div class="two-fields"><select name="category" required><option value="ফ্যাশন" ${product.category === 'ফ্যাশন' ? 'selected' : ''}>ফ্যাশন</option><option value="বিউটি" ${product.category === 'বিউটি' ? 'selected' : ''}>বিউটি</option><option value="হোম" ${product.category === 'হোম' ? 'selected' : ''}>হোম</option><option value="টেক" ${product.category === 'টেক' ? 'selected' : ''}>টেক</option></select><input name="stock" type="number" value="${product.stock}" placeholder="স্টক" required></div><input name="image" type="url" value="${escapeHtml(product.image)}" placeholder="Image URL" required><textarea name="description" placeholder="পণ্যের বর্ণনা" required>${escapeHtml(product.description)}</textarea><button class="primary-button" type="submit">Product update করুন</button></form>`; return openModal('ordersModal'); }
+  const editProduct = event.target.closest('[data-edit-product]'); if (editProduct) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(editProduct.dataset.editProduct)); if (!product) return; $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">PRODUCT EDITOR</p><h2>${escapeHtml(product.name)}</h2></div><form id="productEditForm" class="stack-form"><input type="hidden" name="id" value="${product.id}"><input name="name" value="${escapeHtml(product.name)}" placeholder="পণ্যের নাম" required><div class="two-fields"><input name="price" type="number" value="${product.price}" placeholder="দাম" required><input name="old" type="number" value="${product.old}" placeholder="আগের দাম" required></div><div class="two-fields"><select name="category" required><option value="">ক্যাটাগরি নির্বাচন করুন</option>${getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}" ${product.category === category.name ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select><input name="stock" type="number" value="${product.stock}" placeholder="স্টক" required></div><input name="image" type="url" value="${escapeHtml(product.image)}" placeholder="Image URL" required><textarea name="description" placeholder="পণ্যের বর্ণনা" required>${escapeHtml(product.description)}</textarea><button class="primary-button" type="submit">Product update করুন</button></form>`; return openModal('ordersModal'); }
   const saveProductChanges = event.target.closest('[data-save-product-changes]');
   if (saveProductChanges) {
     void savePendingProductChanges();
@@ -497,19 +840,133 @@ document.addEventListener('click', event => {
     showToast('পণ্যটি মুছে ফেলার জন্য চিহ্নিত হয়েছে — Save Changes চাপুন');
     return;
   }
+  const addSubcategory = event.target.closest('[data-add-subcategory]');
+  if (addSubcategory) {
+    event.preventDefault();
+    event.stopPropagation();
+    const form = $('#categoryForm');
+    const input = form?.elements?.newSubcategory;
+    const name = String(input?.value || '').trim();
+    if (!name) return showToast('Subcategory name দিন');
+
+    const id = String(form?.elements?.id?.value || '').trim();
+    if (!id) return showToast('আগে category save করুন');
+
+    const category = categories.find(item => String(item.id) === id);
+    if (!category) return showToast('Category পাওয়া যায়নি');
+
+    category.subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
+    if (category.subcategories.some(item => String(typeof item === 'string' ? item : item.name || '').trim().toLowerCase() === name.toLowerCase())) {
+      return showToast('এই subcategory আগে থেকেই আছে');
+    }
+
+    category.subcategories.push({id:`sub-${Date.now()}`, name, productIds:[]});
+    input.value = '';
+    renderCategorySubcategoryList(category);
+    showToast('Subcategory যোগ হয়েছে');
+    return;
+  }
+
+  const editCategory = event.target.closest('[data-edit-category]');
+  if (editCategory) {
+    event.preventDefault();
+    event.stopPropagation();
+    const category = categories.find(item => String(item.id) === String(editCategory.dataset.editCategory));
+    if (!category) return;
+    const form = $('#categoryForm');
+    if (!form) return;
+    form.elements.id.value = category.id;
+    form.elements.name.value = category.name || '';
+    form.elements.image.value = category.image || '';
+    form.elements.active.checked = category.active !== false;
+    renderCategoryProductPicker(category);
+    renderCategorySubcategoryList(category);
+    form.elements.name.focus();
+    showToast(`${category.name} edit mode`);
+    return;
+  }
+
+  const removeSubcategory = event.target.closest('[data-remove-subcategory]');
+  if (removeSubcategory) {
+    event.preventDefault();
+    event.stopPropagation();
+    const form = $('#categoryForm');
+    const id = String(form?.elements?.id?.value || '').trim();
+    const category = categories.find(item => String(item.id) === id);
+    if (!category) return showToast('Category পাওয়া যায়নি');
+
+    const index = Number(removeSubcategory.dataset.removeSubcategory);
+    if (!Array.isArray(category.subcategories) || !Number.isInteger(index)) return;
+
+    category.subcategories.splice(index, 1);
+    renderCategorySubcategoryList(category);
+    showToast('Subcategory remove হয়েছে');
+    return;
+  }
+
+  const deleteCategory = event.target.closest('[data-delete-category]');
+  if (deleteCategory) {
+    event.preventDefault();
+    event.stopPropagation();
+    const category = categories.find(item => String(item.id) === String(deleteCategory.dataset.deleteCategory));
+    if (!category) return;
+
+    const linkedProducts = products.filter(product => product.category === category.name);
+    if (linkedProducts.length) {
+      return showToast(`${linkedProducts.length}টি product আগে অন্য category-তে দিন`);
+    }
+
+    categories = categories.filter(item => String(item.id) !== String(category.id));
+    ads.forEach(ad => { if (ad.targetCategory === category.name) ad.targetCategory = ''; });
+    gifts.forEach(gift => { if (gift.giftCategory === category.name) gift.giftCategory = ''; });
+
+    saveState();
+    renderProducts();
+    renderAdmin();
+    showToast('Category removed');
+    return;
+  }
+
   const deleteCoupon = event.target.closest('[data-delete-coupon]'); if (deleteCoupon) { coupons = coupons.filter(coupon => coupon.code !== deleteCoupon.dataset.deleteCoupon); saveState(); renderAdmin(); return; }
   const editCoupon = event.target.closest('[data-edit-coupon]'); if (editCoupon) { const coupon = coupons.find(item => item.code === editCoupon.dataset.editCoupon); if (coupon) { $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">COUPON EDITOR</p><h2>${escapeHtml(coupon.code)}</h2></div><form id="couponEditForm" class="stack-form"><input type="hidden" name="code" value="${escapeHtml(coupon.code)}"><input name="minOrder" type="number" value="${coupon.minOrder || 0}" placeholder="Minimum order"><input name="maxDiscount" type="number" value="${coupon.maxDiscount || 0}" placeholder="Maximum discount"><input name="expiresAt" type="datetime-local" value="${escapeHtml(coupon.expiresAt || '')}"><button class="primary-button" type="submit">Update coupon</button></form>`; openModal('ordersModal'); } return; }
   const deleteAd = event.target.closest('[data-delete-ad]'); if (deleteAd) { ads = ads.filter(ad => ad.id !== Number(deleteAd.dataset.deleteAd)); saveState(); renderAdmin(); return; }
-  const editAd = event.target.closest('[data-edit-ad]'); if (editAd) { event.preventDefault(); event.stopPropagation(); const ad = ads.find(item => item.id === Number(editAd.dataset.editAd)); if (ad) { const selectedIds = new Set((ad.productIds || []).map(Number)); const selectedProducts = products.map(product => `<label><input type="checkbox" name="campaignProducts" value="${product.id}" ${selectedIds.has(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join(''); const categoryOptions = [...new Set(products.map(product => product.category))].map(category => `<option value="${escapeHtml(category)}" ${ad.targetCategory === category ? 'selected' : ''}>${escapeHtml(category)}</option>`).join(''); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">CAMPAIGN EDITOR</p><h2>${escapeHtml(ad.title)}</h2></div><form id="adEditForm" class="stack-form"><input type="hidden" name="id" value="${ad.id}"><input name="title" value="${escapeHtml(ad.title)}" required><input name="text" value="${escapeHtml(ad.text)}" required><input name="image" value="${escapeHtml(ad.image)}" type="url" required><input name="link" value="${escapeHtml(ad.link || '#campaign')}"><input name="expiresAt" value="${escapeHtml(ad.expiresAt || '')}" type="datetime-local"><select name="targetCategory"><option value="">সব category</option>${categoryOptions}</select><fieldset class="campaign-picker"><legend>এই campaign-এ products বাছাই করুন</legend>${selectedProducts}</fieldset><button class="primary-button" type="submit">Update campaign</button></form>`; openModal('ordersModal'); } return; }
+  const editAd = event.target.closest('[data-edit-ad]'); if (editAd) { event.preventDefault(); event.stopPropagation(); const ad = ads.find(item => item.id === Number(editAd.dataset.editAd)); if (ad) { const selectedIds = new Set((ad.productIds || []).map(Number)); const selectedProducts = products.map(product => `<label><input type="checkbox" name="campaignProducts" value="${product.id}" ${selectedIds.has(Number(product.id)) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join(''); const categoryOptions = getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}" ${ad.targetCategory === category.name ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join(''); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">CAMPAIGN EDITOR</p><h2>${escapeHtml(ad.title)}</h2></div><form id="adEditForm" class="stack-form"><input type="hidden" name="id" value="${ad.id}"><input name="title" value="${escapeHtml(ad.title)}" required><input name="text" value="${escapeHtml(ad.text)}" required><input name="image" value="${escapeHtml(ad.image)}" type="url" required><input name="link" value="${escapeHtml(ad.link || '#campaign')}"><input name="expiresAt" value="${escapeHtml(ad.expiresAt || '')}" type="datetime-local"><select name="targetCategory"><option value="">সব category</option>${categoryOptions}</select><fieldset class="campaign-picker"><legend>এই campaign-এ products বাছাই করুন</legend>${selectedProducts}</fieldset><button class="primary-button" type="submit">Update campaign</button></form>`; openModal('ordersModal'); } return; }
   const viewOrder = event.target.closest('[data-view-order]'); if (viewOrder) return showAdminOrder(viewOrder.dataset.viewOrder);
   const editTracking = event.target.closest('[data-edit-tracking]'); if (editTracking) { const order = orders.find(item => item.id === editTracking.dataset.editTracking); if (!order) return; $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">COURIER TRACKING</p><h2>Order #${escapeHtml(order.id)}</h2></div><form id="trackingForm" class="stack-form"><input type="hidden" name="orderId" value="${order.id}"><input name="courierName" value="${escapeHtml(order.courierName || '')}" placeholder="Courier service name" required><input name="bookingNumber" value="${escapeHtml(order.bookingNumber || '')}" placeholder="Booking Number" required><input name="trackingUrl" value="${escapeHtml(order.trackingUrl || '')}" placeholder="Tracking Link (optional)" type="url"><button class="primary-button" type="submit">Tracking update করুন</button></form>`; return openModal('ordersModal'); }
-  const editGift = event.target.closest('[data-edit-gift]'); if (editGift) { const gift = gifts.find(item => item.id === Number(editGift.dataset.editGift)); if (!gift) return; const selectedProducts = products.map(product => `<label><input type="checkbox" name="giftProducts" value="${product.id}" ${(gift.productIds || []).includes(product.id) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join(''); const categoryOptions = [...new Set(products.map(product => product.category))].map(category => `<option value="${escapeHtml(category)}" ${gift.giftCategory === category ? 'selected' : ''}>${escapeHtml(category)}</option>`).join(''); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>Edit ${escapeHtml(gift.title)}</h2></div><form id="giftEditForm" class="stack-form"><input type="hidden" name="id" value="${gift.id}"><input name="title" value="${escapeHtml(gift.title)}" required><input name="image" value="${escapeHtml(gift.image)}" type="url" required><input name="stock" value="${gift.stock}" type="number" min="0" required><input name="quantity" value="${gift.quantity || 1}" type="number" min="1" required><input name="expiresAt" value="${escapeHtml(gift.expiresAt || '')}" type="datetime-local"><select name="giftCategory"><option value="">সব category</option>${categoryOptions}</select><fieldset class="campaign-picker"><legend>Gift পেতে products tick করুন</legend>${selectedProducts}</fieldset><button class="primary-button" type="submit">Update gift</button></form>`; return openModal('ordersModal'); }
+  const editGift = event.target.closest('[data-edit-gift]'); if (editGift) { const gift = gifts.find(item => item.id === Number(editGift.dataset.editGift)); if (!gift) return; const selectedProducts = products.map(product => `<label><input type="checkbox" name="giftProducts" value="${product.id}" ${(gift.productIds || []).includes(product.id) ? 'checked' : ''}><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join(''); const categoryOptions = getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}" ${gift.giftCategory === category.name ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join(''); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>Edit ${escapeHtml(gift.title)}</h2></div><form id="giftEditForm" class="stack-form"><input type="hidden" name="id" value="${gift.id}"><input name="title" value="${escapeHtml(gift.title)}" required><input name="image" value="${escapeHtml(gift.image)}" type="url" required><input name="stock" value="${gift.stock}" type="number" min="0" required><input name="quantity" value="${gift.quantity || 1}" type="number" min="1" required><input name="expiresAt" value="${escapeHtml(gift.expiresAt || '')}" type="datetime-local"><select name="giftCategory"><option value="">সব category</option>${categoryOptions}</select><select name="giftSubcategory">${getSubcategoryOptions(gift.giftCategory, gift.giftSubcategory || '')}</select><fieldset class="campaign-picker"><legend>Gift পেতে products tick করুন</legend>${selectedProducts}</fieldset><button class="primary-button" type="submit">Update gift</button></form>`; return openModal('ordersModal'); }
   const deleteGift = event.target.closest('[data-delete-gift]'); if (deleteGift) { gifts = gifts.filter(item => item.id !== Number(deleteGift.dataset.deleteGift)); saveState(); renderGifts(); renderAdmin(); showToast('Gift campaign removed'); return; }
   const giftView = event.target.closest('[data-gift-view]'); if (giftView) return showGiftDetails(giftView.dataset.giftView);
   const resetUser = event.target.closest('[data-reset-user]'); if (resetUser) { const user = users.find(item => item.id === Number(resetUser.dataset.resetUser)); if (!user) return; user.password = `Laiba${String(user.id).slice(-4)}`; saveState(); renderAdmin(); showToast(`${user.name}-এর default password: ${user.password}`); return; }
   const reviewProduct = event.target.closest('[data-review-product]'); if (reviewProduct) { const product = products.find(item => item.id === Number(reviewProduct.dataset.reviewProduct)); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">VERIFIED PURCHASE</p><h2>${escapeHtml(product?.name || 'Product review')}</h2></div><form id="reviewForm" class="stack-form"><input type="hidden" name="productId" value="${reviewProduct.dataset.reviewProduct}"><input type="hidden" name="orderId" value="${reviewProduct.dataset.reviewOrder}"><select name="rating"><option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option><option value="2">★★</option><option value="1">★</option></select><textarea name="comment" placeholder="আপনার অভিজ্ঞতা লিখুন" required></textarea><button class="primary-button" type="submit">Review publish করুন</button></form>`; return; }
 });
-document.addEventListener('change', event => { const orderStatus = event.target.closest('[data-order-status]'); if (!orderStatus) return; const order = orders.find(item => item.id === orderStatus.dataset.orderStatus); if (order) { order.status = orderStatus.value; order.statusLabel = {pending:'অপেক্ষমাণ',confirmed:'কনফার্মড',shipped:'শিপড',delivered:'ডেলিভারড'}[order.status]; saveState(); showToast('অর্ডারের status আপডেট হয়েছে'); } });
+document.addEventListener('change', event => {
+  const giftForm = event.target.closest('#giftForm, #giftEditForm');
+  if (giftForm && (event.target.name === 'giftCategory' || event.target.name === 'giftSubcategory')) {
+    const category = giftForm.querySelector('[name="giftCategory"]')?.value || '';
+    const subcategory = giftForm.querySelector('[name="giftSubcategory"]')?.value || '';
+    if (event.target.name === 'giftCategory') {
+      const sub = giftForm.querySelector('[name="giftSubcategory"]');
+      if (sub) sub.innerHTML = getSubcategoryOptions(category);
+    }
+    const allowed = subcategory
+      ? new Set(products.filter(product => productMatchesSubcategory(product, category, subcategory)).map(product => Number(product.id)))
+      : category
+        ? new Set(products.filter(product => productMatchesCategory(product, category)).map(product => Number(product.id)))
+        : null;
+
+    if (allowed) {
+      giftForm.querySelectorAll('[name="giftProducts"]').forEach(input => {
+        const label = input.closest('label');
+        const show = allowed.has(Number(input.value));
+        if (label) label.hidden = !show;
+        if (!show) input.checked = false;
+      });
+    }
+  }
+
+  const orderStatus = event.target.closest('[data-order-status]');
+  if (!orderStatus) return;
+ const order = orders.find(item => item.id === orderStatus.dataset.orderStatus); if (order) { order.status = orderStatus.value; order.statusLabel = {pending:'অপেক্ষমাণ',confirmed:'কনফার্মড',shipped:'শিপড',delivered:'ডেলিভারড'}[order.status]; saveState(); showToast('অর্ডারের status আপডেট হয়েছে'); } });
 document.addEventListener('input', event => { if (event.target.id === 'adminProductSearch') renderAdminProductList(event.target.value); });
 document.addEventListener('submit', event => {
   event.preventDefault(); const form = event.target; const data = Object.fromEntries(new FormData(form));
@@ -518,13 +975,13 @@ document.addEventListener('submit', event => {
   if (form.id === 'productForm') { const price = Number(data.price); const old = Number(data.old); products.unshift({id:Date.now(),name:data.name,price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:data.image,description:data.description}); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); return; }
   if (form.id === 'productEditForm') { const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock)) || !data.image?.trim()) return showToast('Product-এর সব তথ্য পূরণ করুন'); Object.assign(product, {name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',category:data.category,stock:Number(data.stock),image:data.image.trim(),description:data.description || ''}); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); return; }
   if (form.id === 'couponForm') { const code = data.code.toUpperCase().trim(); if (coupons.some(coupon => coupon.code === code)) return showToast('এই coupon আগে থেকেই আছে'); if (data.type === 'percent' && (!Number(data.value) || Number(data.value) > 100)) return showToast('Discount 1 থেকে 100% এর মধ্যে দিন'); coupons.push({code,type:data.type,value:Number(data.value || 0),maxDiscount:Number(data.maxDiscount || 0),minOrder:Number(data.minOrder || 0),expiresAt:data.expiresAt || '',active:true}); saveState(); renderAdmin(); showToast('কুপন সক্রিয় হয়েছে'); return; }
-  if (form.id === 'giftForm') { gifts.unshift({id:Date.now(),title:data.title,image:data.image,stock:Number(data.stock),quantity:Number(data.quantity || 1),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:true}); saveState(); renderGifts(); renderAdmin(); showToast('Free gift campaign চালু হয়েছে'); return; }
+  if (form.id === 'giftForm') { gifts.unshift({id:Date.now(),title:data.title,image:data.image,stock:Number(data.stock),quantity:Number(data.quantity || 1),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',giftSubcategory:data.giftSubcategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:true}); saveState(); renderGifts(); renderAdmin(); showToast('Free gift campaign চালু হয়েছে'); return; }
   if (form.id === 'shippingForm') { shippingSettings = {insideDhaka:Number(data.insideDhaka || 0),outsideDhaka:Number(data.outsideDhaka || 0),freeThreshold:Number(data.freeThreshold || 0)}; saveState(); renderAdmin(); showToast('Shipping settings updated'); return; }
   if (form.id === 'campaignForm') { campaignSettings = {title:data.title,subtitle:data.subtitle,text:data.text,image:data.image,discount:data.discount,productIds:[...form.querySelectorAll('[name="curatedProducts"]:checked')].map(input => Number(input.value)).slice(0, 5)}; saveState(); renderCampaignBanner(); renderProducts(); renderAdmin(); showToast('New arrival updated'); return; }
   if (form.id === 'heroForm') { heroSettings = {tagTop:data.tagTop,tagBottom:data.tagBottom,image:data.image,cardTitle:data.cardTitle,cardOffer:data.cardOffer}; saveState(); renderHero(); renderAdmin(); showToast('Hero banner updated'); return; }
   if (form.id === 'reviewForm') { const order = orders.find(item => item.id === data.orderId); const purchased = order?.userId === currentUser?.id && order.status === 'delivered' && order.items.some(item => item.id === Number(data.productId)); const alreadyReviewed = reviews.some(review => review.orderId === data.orderId && review.productId === Number(data.productId)); if (!purchased) return showToast('পণ্য ডেলিভারি হওয়ার পর review দেওয়া যাবে'); if (alreadyReviewed) return showToast('এই পণ্যে আগে review দেওয়া হয়েছে'); reviews.push({id:Date.now(),orderId:data.orderId,productId:Number(data.productId),userId:currentUser.id,rating:Number(data.rating),comment:data.comment,userName:currentUser.name}); saveState(); closeModal('ordersModal'); showToast('Review publish হয়েছে'); return; }
   if (form.id === 'trackingForm') { const order = orders.find(item => item.id === data.orderId); if (order) { order.courierName = data.courierName; order.bookingNumber = data.bookingNumber; order.trackingUrl = data.trackingUrl; saveState(); closeModal('ordersModal'); renderAdmin(); showToast('Tracking details updated'); } return; }
-  if (form.id === 'giftEditForm') { const gift = gifts.find(item => item.id === Number(data.id)); if (gift) { Object.assign(gift, {title:data.title,image:data.image,stock:Number(data.stock),quantity:Number(data.quantity),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:Number(data.stock) > 0}); saveState(); closeModal('ordersModal'); renderGifts(); renderAdmin(); showToast('Gift campaign updated'); } return; }
+  if (form.id === 'giftEditForm') { const gift = gifts.find(item => item.id === Number(data.id)); if (gift) { Object.assign(gift, {title:data.title,image:data.image,stock:Number(data.stock),quantity:Number(data.quantity),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',giftSubcategory:data.giftSubcategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:Number(data.stock) > 0}); saveState(); closeModal('ordersModal'); renderGifts(); renderAdmin(); showToast('Gift campaign updated'); } return; }
   if (form.id === 'couponEditForm') { const coupon = coupons.find(item => item.code === data.code); if (coupon) { Object.assign(coupon, {minOrder:Number(data.minOrder || 0),maxDiscount:Number(data.maxDiscount || 0),expiresAt:data.expiresAt || ''}); saveState(); closeModal('ordersModal'); renderAdmin(); showToast('Coupon updated'); } return; }
   if (form.id === 'adEditForm') { const ad = ads.find(item => item.id === Number(data.id)); if (!ad) return showToast('Campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.text?.trim() || !data.image?.trim()) return showToast('Campaign-এর title, text ও image দিন'); const selectedProductIds = [...form.querySelectorAll('[name="campaignProducts"]:checked')].map(input => Number(input.value)); Object.assign(ad, {title:data.title.trim(),text:data.text.trim(),image:data.image.trim(),link:data.link || '#campaign',expiresAt:data.expiresAt || '',targetCategory:data.targetCategory || '',productIds:selectedProductIds}); saveState(); closeModal('ordersModal'); renderAds(); renderProducts(); renderAdmin(); showToast(`${selectedProductIds.length}টি product সহ campaign updated`); return; }
   if (form.id === 'adForm') { ads.unshift({id:Date.now(),title:data.title,text:data.text,image:data.image,link:data.link || '#campaign',expiresAt:data.expiresAt || '',targetCategory:data.targetCategory || '',productIds:form.querySelectorAll('[name="campaignProducts"]:checked').length ? [...form.querySelectorAll('[name="campaignProducts"]:checked')].map(input => Number(input.value)) : [],active:true}); saveState(); renderAds(); renderProducts(); renderAdmin(); showToast('Ad card publish হয়েছে'); }
