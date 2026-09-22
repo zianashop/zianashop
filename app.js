@@ -59,9 +59,165 @@ let adminOrderLimit = 10;
 let editingGiftId = null;
 let editingAdId = null;
 
-function saveState() { write('laiba_products', products); write('laiba_cart', cart); write('laiba_coupons', coupons); write('laiba_ads', ads); write('laiba_hero', heroSettings); write('laiba_campaign', campaignSettings); write('laiba_mall', mallSettings); write('laiba_gifts', gifts); write('laiba_orders', orders); write('laiba_reviews', reviews); write('laiba_users', users); write('laiba_shipping', shippingSettings); void persistCloudState(); }
-async function persistCloudState() { const client = window.laibaSupabase; if (!client) return; const settings = [{key:'ads',value:ads},{key:'hero',value:heroSettings},{key:'campaign',value:campaignSettings},{key:'mall',value:mallSettings},{key:'gifts',value:gifts},{key:'coupons',value:coupons},{key:'shipping',value:shippingSettings}]; await client.from('store_settings').upsert(settings, {onConflict:'key'}); const cloudProducts = products.map(product => ({id:Number(product.id),name:product.name,price:product.price,old_price:product.old,discount:product.discount || '',rating:Number(product.rating || 4.8),category:product.category,stock:Number(product.stock || 0),image:primaryProductImage(product),images:productImages(product),videos:productVideos(product),description:product.description || '',active:true})); if (cloudProducts.length) await client.from('products').upsert(cloudProducts, {onConflict:'id'}); }
-async function loadCloudState() { const client = window.laibaSupabase; if (!client) return; const productResult = await client.from('products').select('*').eq('active', true).order('created_at', {ascending:false}); if (!productResult.error && productResult.data?.length) { products = productResult.data.map(product => normaliseProductMedia({id:product.id,name:product.name,price:Number(product.price),old:Number(product.old_price || 0),discount:product.discount || '',rating:String(product.rating || '4.8'),category:product.category,stock:product.stock,image:product.image,images:product.images, videos:product.videos,description:product.description || ''})); write('laiba_products', products); } const settingsResult = await client.from('store_settings').select('key,value'); if (!settingsResult.error) settingsResult.data.forEach(setting => { if (setting.key === 'ads') ads = setting.value; if (setting.key === 'hero') heroSettings = {...heroSettings,...setting.value}; if (setting.key === 'campaign') campaignSettings = {...campaignSettings,...setting.value}; if (setting.key === 'mall') mallSettings = setting.value; if (setting.key === 'gifts') gifts = setting.value; if (setting.key === 'coupons') coupons = setting.value; if (setting.key === 'shipping') shippingSettings = {...shippingSettings,...setting.value}; }); renderCategories(); renderAds(); renderHero(); renderCampaignBanner(); renderGifts(); renderProducts(); updateCart(); }
+let cloudSaveQueue = Promise.resolve();
+
+function saveState() {
+  write('laiba_products', products);
+  write('laiba_cart', cart);
+  write('laiba_coupons', coupons);
+  write('laiba_ads', ads);
+  write('laiba_hero', heroSettings);
+  write('laiba_campaign', campaignSettings);
+  write('laiba_mall', mallSettings);
+  write('laiba_gifts', gifts);
+  write('laiba_orders', orders);
+  write('laiba_reviews', reviews);
+  write('laiba_users', users);
+  write('laiba_shipping', shippingSettings);
+
+  cloudSaveQueue = cloudSaveQueue
+    .then(() => persistCloudState())
+    .catch(error => {
+      console.error('Cloud save failed:', error);
+      showToast(error.message || 'Cloud save failed');
+    });
+
+  return cloudSaveQueue;
+}
+
+async function persistCloudState() {
+  const client = window.laibaSupabase;
+  if (!client) return;
+
+  const settings = [
+    {key:'ads',value:ads},
+    {key:'hero',value:heroSettings},
+    {key:'campaign',value:campaignSettings},
+    {key:'mall',value:mallSettings},
+    {key:'gifts',value:gifts},
+    {key:'coupons',value:coupons},
+    {key:'shipping',value:shippingSettings}
+  ];
+
+  const settingsResult = await client
+    .from('store_settings')
+    .upsert(settings, {onConflict:'key'});
+
+  if (settingsResult.error) {
+    throw new Error(`Settings save failed: ${settingsResult.error.message}`);
+  }
+
+  const cloudProducts = products.map(product => ({
+    id:Number(product.id),
+    name:product.name,
+    price:product.price,
+    old_price:product.old,
+    discount:product.discount || '',
+    rating:Number(product.rating || 4.8),
+    category:product.category,
+    stock:Number(product.stock || 0),
+    image:primaryProductImage(product),
+    images:productImages(product),
+    videos:productVideos(product),
+    description:product.description || '',
+    active:true
+  }));
+
+  const existingResult = await client
+    .from('products')
+    .select('id');
+
+  if (existingResult.error) {
+    throw new Error(`Product lookup failed: ${existingResult.error.message}`);
+  }
+
+  const localIds = new Set(cloudProducts.map(product => Number(product.id)));
+  const staleIds = (existingResult.data || [])
+    .map(product => Number(product.id))
+    .filter(id => !localIds.has(id));
+
+  if (staleIds.length) {
+    const deleteResult = await client
+      .from('products')
+      .delete()
+      .in('id', staleIds);
+
+    if (deleteResult.error) {
+      throw new Error(`Product delete failed: ${deleteResult.error.message}`);
+    }
+  }
+
+  if (cloudProducts.length) {
+    const upsertResult = await client
+      .from('products')
+      .upsert(cloudProducts, {onConflict:'id'});
+
+    if (upsertResult.error) {
+      throw new Error(`Product save failed: ${upsertResult.error.message}`);
+    }
+  }
+}
+
+async function loadCloudState() {
+  const client = window.laibaSupabase;
+  if (!client) return false;
+
+  const productResult = await client
+    .from('products')
+    .select('*')
+    .eq('active', true)
+    .order('created_at', {ascending:false});
+
+  if (productResult.error) {
+    throw new Error(`Cloud products load failed: ${productResult.error.message}`);
+  }
+
+  products = (productResult.data || []).map(product => normaliseProductMedia({
+    id:product.id,
+    name:product.name,
+    price:Number(product.price),
+    old:Number(product.old_price || 0),
+    discount:product.discount || '',
+    rating:String(product.rating || '4.8'),
+    category:product.category,
+    stock:product.stock,
+    image:product.image,
+    images:product.images,
+    videos:product.videos,
+    description:product.description || ''
+  }));
+
+  write('laiba_products', products);
+
+  const settingsResult = await client
+    .from('store_settings')
+    .select('key,value');
+
+  if (settingsResult.error) {
+    throw new Error(`Cloud settings load failed: ${settingsResult.error.message}`);
+  }
+
+  settingsResult.data.forEach(setting => {
+    if (setting.key === 'ads') ads = setting.value;
+    if (setting.key === 'hero') heroSettings = {...heroSettings,...setting.value};
+    if (setting.key === 'campaign') campaignSettings = {...campaignSettings,...setting.value};
+    if (setting.key === 'mall') mallSettings = setting.value;
+    if (setting.key === 'gifts') gifts = setting.value;
+    if (setting.key === 'coupons') coupons = setting.value;
+    if (setting.key === 'shipping') shippingSettings = {...shippingSettings,...setting.value};
+  });
+
+  renderCategories();
+  renderAds();
+  renderHero();
+  renderCampaignBanner();
+  renderGifts();
+  renderProducts();
+  updateCart();
+
+  return true;
+}
+
 async function uploadProductMedia(file, type = 'image') { const client = window.laibaSupabase; if (!client) throw new Error('Supabase connection পাওয়া যায়নি'); if (!file) return ''; const maxSize = type === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024; if (file.size > maxSize) throw new Error(type === 'video' ? 'Video সর্বোচ্চ 100MB হতে পারবে' : 'Image সর্বোচ্চ 10MB হতে পারবে'); if (type === 'video' && !file.type.startsWith('video/')) throw new Error('শুধু video file নির্বাচন করুন'); if (type === 'image' && !file.type.startsWith('image/')) throw new Error('শুধু image file নির্বাচন করুন'); const extension = file.name.split('.').pop()?.toLowerCase() || 'file'; const filePath = `${type === 'video' ? 'videos' : 'images'}/${Date.now()}-${crypto.randomUUID()}.${extension}`; const {error} = await client.storage.from(PRODUCT_MEDIA_BUCKET).upload(filePath, file, {cacheControl:'31536000', contentType:file.type, upsert:false}); if (error) throw new Error(error.message || 'File upload failed'); const {data} = client.storage.from(PRODUCT_MEDIA_BUCKET).getPublicUrl(filePath); if (!data?.publicUrl) throw new Error('Uploaded file-এর URL পাওয়া যায়নি'); return data.publicUrl; }
 async function uploadProductMediaFromForm(form) { const imageFiles = [...(form.querySelector('[name="images"]')?.files || [])]; const videoFiles = [...(form.querySelector('[name="videos"]')?.files || [])]; const [images, videos] = await Promise.all([Promise.all(imageFiles.map(file => uploadProductMedia(file, 'image'))), Promise.all(videoFiles.map(file => uploadProductMedia(file, 'video')))]); return {images, videos}; }
 async function persistCloudOrder(order) { const client = window.laibaSupabase; if (!client || !currentUser?.id || !String(currentUser.id).includes('-')) return; await client.from('orders').insert({id:order.cloudId,user_id:currentUser.id,customer:order.customer,payment:order.payment,items:order.items,gift:order.gift,subtotal:order.subtotal,discount:order.discount,shipping:order.shipping,total:order.total,status:order.status,status_label:order.statusLabel}); }
