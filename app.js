@@ -3466,3 +3466,58 @@ async function handleAdminOrderStatusChange(order, select) {
     subtree: true
   });
 })();
+
+/* PRODUCT DETAILS BUTTON HOVER - FORCE HOME STYLE */
+(function forceProductDetailsButtonHover() {
+  if (window.__ziyanaProductDetailsButtonHoverReady) return;
+  window.__ziyanaProductDetailsButtonHoverReady = true;
+
+  function styleButton(button) {
+    if (!button || button.dataset.homeButtonStyleApplied === '1') return;
+
+    button.dataset.homeButtonStyleApplied = '1';
+
+    const normal = () => {
+      button.style.setProperty('background', '#ffffff', 'important');
+      button.style.setProperty('color', '#111111', 'important');
+      button.style.setProperty('border', '1px solid #111111', 'important');
+      button.style.setProperty('box-shadow', 'none', 'important');
+    };
+
+    const hover = () => {
+      button.style.setProperty('background', '#111111', 'important');
+      button.style.setProperty('color', '#ffffff', 'important');
+      button.style.setProperty('border', '1px solid #111111', 'important');
+      button.style.setProperty('box-shadow', 'none', 'important');
+    };
+
+    normal();
+
+    button.addEventListener('mouseenter', hover);
+    button.addEventListener('mouseleave', normal);
+
+    button.addEventListener('focus', normal);
+    button.addEventListener('blur', normal);
+  }
+
+  function scan() {
+    document.querySelectorAll('.modal button, [role="dialog"] button').forEach(button => {
+      const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+
+      if (
+        text === 'ব্যাগে যোগ করুন' ||
+        text === 'Buy Now'
+      ) {
+        styleButton(button);
+      }
+    });
+  }
+
+  scan();
+
+  new MutationObserver(scan).observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+})();
+
