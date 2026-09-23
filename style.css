@@ -4448,3 +4448,100 @@ body.checkout-page-active #checkoutForm.checkout-layout > .checkout-summary {
   }
 }
 
+
+/* PRODUCT DETAILS - MATCH STOREFRONT STYLE */
+.product-details-light-view,
+.product-details-light-view * {
+  box-sizing: border-box;
+}
+
+.product-details-light-view {
+  background: var(--surface, #ffffff) !important;
+  color: var(--text, #111111) !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+}
+
+.product-details-light-view h1,
+.product-details-light-view h2,
+.product-details-light-view h3,
+.product-details-light-view p,
+.product-details-light-view strong,
+.product-details-light-view span,
+.product-details-light-view small {
+  color: inherit !important;
+}
+
+.product-details-light-view .product-buy-now-button,
+.product-details-light-view button.primary-button {
+  background: var(--primary, #111111) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  min-height: 44px !important;
+  padding: 10px 18px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+
+.product-details-light-view .product-buy-now-button:hover,
+.product-details-light-view button.primary-button:hover {
+  filter: brightness(.94);
+}
+
+.product-details-light-view button.outline-button,
+.product-details-light-view button.secondary-button {
+  background: transparent !important;
+  color: var(--primary, #111111) !important;
+  border: 1px solid currentColor !important;
+  border-radius: 10px !important;
+  min-height: 44px !important;
+  padding: 10px 18px !important;
+  font-weight: 700 !important;
+}
+
+.product-details-light-view img {
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .product-details-light-view {
+    border-radius: 14px !important;
+  }
+
+  .product-details-light-view .product-buy-now-button,
+  .product-details-light-view button.primary-button {
+    min-height: 42px !important;
+  }
+}
+
+
+/* PRODUCT DETAILS BUTTON = HOME HOVER STYLE */
+.product-details-light-view .product-buy-now-button,
+.product-details-light-view button.primary-button {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid #111111 !important;
+  border-radius: 10px !important;
+  transition: background .2s ease, color .2s ease, border-color .2s ease !important;
+}
+
+.product-details-light-view .product-buy-now-button:hover,
+.product-details-light-view button.primary-button:hover {
+  background: #111111 !important;
+  color: #ffffff !important;
+  border-color: #111111 !important;
+}
+
+.product-details-light-view .product-buy-now-button:focus,
+.product-details-light-view button.primary-button:focus {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.product-details-light-view .product-buy-now-button:focus:hover,
+.product-details-light-view button.primary-button:focus:hover {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
