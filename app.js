@@ -156,7 +156,7 @@ async function savePendingProductChanges() {
 
 async function persistCloudState() {
   const client = window.laibaSupabase;
-  if (!client) return;
+  if (!client || currentUser?.role !== 'admin') return;
 
   const settings = [
     {key:'ads',value:ads},
@@ -290,20 +290,30 @@ async function loadCloudState() {
 
 async function uploadProductMedia(file, type = 'image') { const client = window.laibaSupabase; if (!client) throw new Error('Supabase connection পাওয়া যায়নি'); if (!file) return ''; const maxSize = type === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024; if (file.size > maxSize) throw new Error(type === 'video' ? 'Video সর্বোচ্চ 100MB হতে পারবে' : 'Image সর্বোচ্চ 10MB হতে পারবে'); if (type === 'video' && !file.type.startsWith('video/')) throw new Error('শুধু video file নির্বাচন করুন'); if (type === 'image' && !file.type.startsWith('image/')) throw new Error('শুধু image file নির্বাচন করুন'); const extension = file.name.split('.').pop()?.toLowerCase() || 'file'; const filePath = `${type === 'video' ? 'videos' : 'images'}/${Date.now()}-${crypto.randomUUID()}.${extension}`; const {error} = await client.storage.from(PRODUCT_MEDIA_BUCKET).upload(filePath, file, {cacheControl:'31536000', contentType:file.type, upsert:false}); if (error) throw new Error(error.message || 'File upload failed'); const {data} = client.storage.from(PRODUCT_MEDIA_BUCKET).getPublicUrl(filePath); if (!data?.publicUrl) throw new Error('Uploaded file-এর URL পাওয়া যায়নি'); return data.publicUrl; }
 async function uploadProductMediaFromForm(form) { const imageFiles = [...(form.querySelector('[name="images"]')?.files || [])]; const videoFiles = [...(form.querySelector('[name="videos"]')?.files || [])]; const [images, videos] = await Promise.all([Promise.all(imageFiles.map(file => uploadProductMedia(file, 'image'))), Promise.all(videoFiles.map(file => uploadProductMedia(file, 'video')))]); return {images, videos}; }
-async function persistCloudOrder(order) { const client = window.laibaSupabase; if (!client || !currentUser?.id || !String(currentUser.id).includes('-')) return; await client.from('orders').insert({id:order.cloudId,user_id:currentUser.id,customer:order.customer,payment:order.payment,items:order.items,gift:order.gift,subtotal:order.subtotal,discount:order.discount,shipping:order.shipping,total:order.total,status:order.status,status_label:order.statusLabel}); }
-async function loadCloudOrders() { const client = window.laibaSupabase; if (!client || !currentUser?.id || !String(currentUser.id).includes('-')) return; const result = await client.from('orders').select('*').order('created_at', {ascending:false}); if (result.error) return; orders = result.data.map(order => ({id:order.id,cloudId:order.id,userId:order.user_id,customer:order.customer,payment:order.payment,items:order.items,gift:order.gift,subtotal:Number(order.subtotal),discount:Number(order.discount),shipping:Number(order.shipping),total:Number(order.total),status:order.status,statusLabel:order.status_label,courierName:order.courier_name,bookingNumber:order.booking_number,trackingUrl:order.tracking_url,createdAt:new Date(order.created_at).toLocaleString('bn-BD')})); write('laiba_orders', orders); }
 function openModal(id) { activeModal = id; document.querySelectorAll('.modal').forEach(modal => { modal.hidden = modal.id !== id; }); decorateAdminForms(); prepareProductMediaInputs(); bindEditorForms(); $('#overlay').hidden = false; }
+
 function closeModal(id = activeModal) { if (id) $(`#${id}`).hidden = true; activeModal = null; if (!document.querySelector('.cart-drawer.open')) $('#overlay').hidden = true; }
+
 function showToast(text) { const toast = $('#toast'); toast.textContent = text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
-async function handleCloudAuth(data) { const client = window.laibaSupabase; const identifier = data.identifier.toLowerCase().trim(); if (!identifier.includes('@')) return showToast('Supabase login-এর জন্য email ব্যবহার করুন'); const result = data.name ? await client.auth.signUp({email:identifier,password:data.password,options:{data:{name:data.name,phone:data.phone || ''}}}) : await client.auth.signInWithPassword({email:identifier,password:data.password}); if (result.error) return showToast(result.error.message); if (!result.data.user) return showToast('Authentication সম্পন্ন হয়নি'); if (data.name && !result.data.session) return showToast('Email inbox থেকে confirmation দিন'); const profileResult = await client.from('profiles').select('*').eq('id', result.data.user.id).single(); const profile = profileResult.data || {}; currentUser = {id:result.data.user.id,name:profile.name || data.name || identifier,email:identifier,phone:profile.phone || data.phone || '',address:profile.address || '',district:profile.district || '',password:'',role:profile.role || 'customer'}; write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) return currentUser.role === 'admin' ? renderAdmin() : showToast('Admin access denied'); if (pendingCheckout) { pendingCheckout = false; return openCheckout(); } if (!data.name && currentUser.role === 'admin') return renderAdmin(); if (!data.name) openOrders(); }
+
+async function handleCloudAuth(data) { const client = window.laibaSupabase; const identifier = data.identifier.toLowerCase().trim(); if (!identifier.includes('@')) return showToast('Supabase login-এর জন্য email ব্যবহার করুন'); const result = data.name ? await client.auth.signUp({email:identifier,password:data.password,options:{data:{name:data.name,phone:data.phone || ''}}}) : await client.auth.signInWithPassword({email:identifier,password:data.password}); if (result.error) return showToast(result.error.message); if (!result.data.user) return showToast('Authentication সম্পন্ন হয়নি'); if (data.name && !result.data.session) return showToast('Email inbox থেকে confirmation দিন'); const profileResult = await client.from('profiles').select('*').eq('id', result.data.user.id).single(); const profile = profileResult.data || {}; currentUser = {id:result.data.user.id,name:profile.name || data.name || identifier,email:identifier,phone:profile.phone || data.phone || '',address:profile.address || '',district:profile.district || '',password:'',role:profile.role || 'customer'}; write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) return currentUser.role === 'admin' ? renderAdmin() : showToast('Admin access denied'); if (pendingCheckout) { pendingCheckout = false; return openCheckout(); } if (!data.name && currentUser.role === 'admin') return renderAdmin(); if (!data.name) {
+    accountOrderFilter = '';
+    return renderCustomerDashboard();
+  } }
+
 function decorateAdminForms() { const categoryOptions = '<option value="">ক্যাটাগরি নির্বাচন করুন</option>' + getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join(''); document.querySelectorAll('#productForm, #productEditForm').forEach(form => { form.noValidate = true; const field = form.querySelector('[name="category"]'); if (field && field.tagName !== 'SELECT') { const select = document.createElement('select'); select.name = 'category'; select.required = true; select.innerHTML = categoryOptions; select.value = field.value || getActiveCategories()[0]?.name || ''; field.replaceWith(select); } }); document.querySelectorAll('#giftForm, #giftEditForm').forEach(form => { form.noValidate = true; const placeholders = {title:'Gift-এর নাম',image:'Gift image URL',stock:'Gift stock',quantity:'এক অর্ডারে কতটি gift',minQuantity:'কতটি selected product কিনলে gift পাবেন'}; Object.entries(placeholders).forEach(([name, text]) => { const field = form.querySelector(`[name="${name}"]`); if (field) field.placeholder = text; }); if (!form.querySelector('[name="minQuantity"]')) { const input = document.createElement('input'); input.name = 'minQuantity'; input.type = 'number'; input.min = '1'; const giftId = form.querySelector('[name="id"]')?.value; input.value = giftId ? String(gifts.find(gift => gift.id === Number(giftId))?.minQuantity || 1) : '1'; input.placeholder = placeholders.minQuantity; const category = form.querySelector('[name="giftCategory"]'); (category || form.querySelector('[name="expiresAt"]'))?.before(input); } const picker = form.querySelector('.campaign-picker'); const minQuantity = form.querySelector('[name="minQuantity"]'); const giftCategory = form.querySelector('[name="giftCategory"]'); if (picker && minQuantity && giftCategory && !form.querySelector('.gift-rule-fields')) { const rules = document.createElement('div'); rules.className = 'gift-rule-fields'; const quantityLabel = document.createElement('label'); quantityLabel.textContent = 'Minimum order quantity'; quantityLabel.append(minQuantity); const categoryLabel = document.createElement('label'); categoryLabel.textContent = 'Gift category'; categoryLabel.append(giftCategory); rules.append(quantityLabel, categoryLabel);
       const subcategoryField = form.querySelector('[name="giftSubcategory"]');
       if (subcategoryField) rules.append(subcategoryField);
       picker.before(rules); } }); document.querySelectorAll('#adEditForm, #adForm, #campaignForm').forEach(form => { form.noValidate = true; }); }
+
 function prepareProductMediaInputs() { document.querySelectorAll('#productForm, #productEditForm').forEach(form => { const legacyImage = form.querySelector('[name="image"]'); if (!legacyImage || form.querySelector('.product-media-fields')) return; legacyImage.required = false; legacyImage.placeholder = 'Primary image URL (optional)'; legacyImage.insertAdjacentHTML('afterend', '<div class="product-media-fields" style="display:grid;gap:10px;padding:12px 0"><label style="display:grid;gap:6px;font-weight:700">ছবি নির্বাচন করুন (একাধিক দেওয়া যাবে)<input name="images" type="file" accept="image/*" multiple style="display:block;width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;background:#fff"></label><small style="display:block">প্রথম ছবিটি সব product card, cart ও checkout-এ দেখাবে।</small><label style="display:grid;gap:6px;font-weight:700">ভিডিও নির্বাচন করুন (একাধিক দেওয়া যাবে)<input name="videos" type="file" accept="video/*" multiple style="display:block;width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;background:#fff"></label><small style="display:block">Image সর্বোচ্চ 10MB এবং video সর্বোচ্চ 100MB।</small></div>'); }); }
+
 function bindEditorForms() { const productForm = $('#productEditForm'); if (productForm) productForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); void saveProductEdit(productForm); }; const campaignForm = $('#adEditForm'); if (campaignForm) campaignForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveCampaignEdit(campaignForm); }; const giftForm = $('#giftEditForm'); if (giftForm) giftForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveGiftEdit(giftForm); }; const mallForm = $('#mallForm'); if (mallForm) mallForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveMallSettings(mallForm); }; }
+
 async function saveProductEdit(form) { const data = Object.fromEntries(new FormData(form)); const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const requestedPrimary = String(data.image || '').trim(); let images = productImages(product); if (requestedPrimary && requestedPrimary !== primaryProductImage(product)) images = [requestedPrimary, ...images.filter(url => url !== requestedPrimary)]; images = [...images, ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image দিন'); const videos = [...productVideos(product), ...uploaded.videos]; const previousCategory = product.category; Object.assign(product, normaliseProductMedia({name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:product.rating || '4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos,description:data.description || ''})); syncProductCategoryMembership(product, previousCategory); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+
 async function createProductFromForm(form) { const data = Object.fromEntries(new FormData(form)); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const manualImage = String(data.image || '').trim(); const images = [...(manualImage ? [manualImage] : []), ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image upload বা URL দিন'); const newProduct = normaliseProductMedia({id:Date.now(),name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos:uploaded.videos,description:data.description || ''}); products.unshift(newProduct); syncProductCategoryMembership(newProduct); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+
 function saveManagedCategoryForm(form) {
   const data = Object.fromEntries(new FormData(form));
   const id = String(data.id || '').trim();
@@ -364,13 +374,96 @@ function saveManagedCategoryForm(form) {
   showToast(id ? 'Category update হয়েছে' : 'নতুন category তৈরি হয়েছে');
 }
 
+async function persistCloudOrder(order) {
+  const client = window.laibaSupabase;
+  if (!client || !currentUser?.id || !String(currentUser.id).includes('-')) return;
+  if (!order.cloudId) order.cloudId = crypto.randomUUID();
+
+  const result = await client.from('orders').insert({
+    id:order.cloudId,
+    user_id:currentUser.id,
+    customer:order.customer,
+    payment:order.payment,
+    items:order.items,
+    gift:order.gift,
+    subtotal:order.subtotal,
+    discount:order.discount,
+    shipping:order.shipping,
+    total:order.total,
+    status:order.status,
+    status_label:order.statusLabel,
+    stock_deducted:Boolean(order.stockDeducted),
+    stock_restored:Boolean(order.stockRestored)
+  });
+
+  if (result.error) {
+    console.error('Cloud order save failed:', result.error);
+    showToast(result.error.message || 'Order cloud save হয়নি');
+  }
+}
+
+
+async function loadCloudOrders() {
+  const client = window.laibaSupabase;
+
+  if (!client || !currentUser?.id || !String(currentUser.id).includes('-')) {
+    return false;
+  }
+
+  const result = await client
+    .from('orders')
+    .select('*')
+    .order('created_at', {ascending:false});
+
+  if (result.error) {
+    console.warn('Cloud orders load failed:', result.error.message);
+    return false;
+  }
+
+  orders = (result.data || []).map(order => ({
+    id: order.id,
+    cloudId: order.id,
+    userId: order.user_id,
+    customer: order.customer || {},
+    payment: order.payment || 'cod',
+    items: Array.isArray(order.items) ? order.items : [],
+    gift: order.gift || null,
+    subtotal: Number(order.subtotal || 0),
+    discount: Number(order.discount || 0),
+    shipping: Number(order.shipping || 0),
+    total: Number(order.total || 0),
+    status: order.status || 'pending',
+    statusLabel: order.status_label || 'অপেক্ষমাণ',
+    courierName: order.courier_name || '',
+    bookingNumber: order.booking_number || '',
+    trackingUrl: order.tracking_url || '',
+    stockDeducted: Boolean(order.stock_deducted),
+    stockRestored: Boolean(order.stock_restored),
+    createdAt: order.created_at
+      ? new Date(order.created_at).toLocaleString('bn-BD')
+      : ''
+  }));
+
+  write('laiba_orders', orders);
+
+  return true;
+}
+
 document.addEventListener('submit', event => { if (event.target.id === 'productForm') { event.preventDefault(); event.stopImmediatePropagation(); void createProductFromForm(event.target); } }, true);
 function saveCampaignEdit(form) { const data = Object.fromEntries(new FormData(form)); const ad = ads.find(item => item.id === Number(data.id)); if (!ad) return showToast('Campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.text?.trim() || !data.image?.trim()) return showToast('Campaign-এর title, text ও image দিন'); const selectedProductIds = [...form.querySelectorAll('[name="campaignProducts"]:checked')].map(input => Number(input.value)); Object.assign(ad, {title:data.title.trim(),text:data.text.trim(),image:data.image.trim(),link:data.link || '#campaign',expiresAt:data.expiresAt || '',targetCategory:data.targetCategory || '',productIds:selectedProductIds}); saveState(); closeModal('ordersModal'); renderAds(); renderProducts(); renderAdmin(); showToast(`${selectedProductIds.length}টি product সহ campaign updated`); }
 function saveGiftEdit(form) { const data = Object.fromEntries(new FormData(form)); const gift = gifts.find(item => item.id === Number(data.id)); if (!gift) return showToast('Gift campaign পাওয়া যায়নি'); if (!data.title?.trim() || !data.image?.trim()) return showToast('Gift title ও image দিন'); Object.assign(gift, {title:data.title.trim(),image:data.image.trim(),stock:Number(data.stock || 0),quantity:Number(data.quantity || 1),minQuantity:Math.max(1, Number(data.minQuantity || 1)),expiresAt:data.expiresAt || '',giftCategory:data.giftCategory || '',giftSubcategory:data.giftSubcategory || '',productIds:[...form.querySelectorAll('[name="giftProducts"]:checked')].map(input => Number(input.value)),active:Number(data.stock) > 0}); saveState(); closeModal('ordersModal'); renderGifts(); renderAdmin(); showToast('Gift campaign updated'); }
 function saveMallSettings(form) { mallSettings = {productIds:[...form.querySelectorAll('[name="mallProducts"]:checked')].map(input => Number(input.value))}; saveState(); renderAdmin(); showToast(`${mallSettings.productIds.length}টি Ziyana Shop product updated`); }
 document.addEventListener('submit', event => { if (event.target.id === 'authForm' && window.laibaSupabase) { event.preventDefault(); event.stopImmediatePropagation(); void handleCloudAuth(Object.fromEntries(new FormData(event.target))); } }, true);
 document.addEventListener('submit', event => { if (event.target.id === 'checkoutForm' && window.laibaSupabase) setTimeout(() => { const order = orders[orders.length - 1]; if (order && !order.cloudId) order.cloudId = crypto.randomUUID(); if (order) void persistCloudOrder(order); }, 0); }, true);
-if (window.laibaSupabase) window.laibaSupabase.auth.onAuthStateChange(() => setTimeout(() => void loadCloudOrders(), 0));
+if (window.laibaSupabase) {
+  window.laibaSupabase.auth.onAuthStateChange(() => {
+    setTimeout(() => {
+      void loadCloudOrders().catch(error => {
+        console.warn('Cloud orders refresh failed:', error);
+      });
+    }, 0);
+  });
+}
 function getActiveCategories() {
   return (Array.isArray(categories) ? categories : defaultCategories)
     .filter(category => category && category.active !== false)
@@ -670,15 +763,112 @@ function addToCart(id) {
   updateCart(); showToast('পণ্যটি আপনার ব্যাগে যোগ হয়েছে ✓');
 }
 function renderAuth(mode = 'login') {
-  if (currentUser) { $('#authContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">MY ACCOUNT</p><h2>${escapeHtml(currentUser.name)}</h2><p>${escapeHtml(currentUser.email || currentUser.phone)}</p></div><div class="account-actions"><button class="primary-button" data-action="my-orders">আমার অর্ডার ও রিভিউ</button><button class="outline-button" data-action="reset-password">পাসওয়ার্ড রিসেট</button>${currentUser.role === 'admin' ? '<button class="dark-button" data-action="open-admin">অ্যাডমিন প্যানেল</button>' : ''}<button class="outline-button" data-action="logout">লগআউট</button></div>`; return; }
-  $('#authContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">WELCOME BACK</p><h2>${mode === 'login' ? 'অ্যাকাউন্টে লগইন করুন' : 'নতুন অ্যাকাউন্ট খুলুন'}</h2><p>${mode === 'login' ? 'ইমেইল অথবা মোবাইল নম্বর দিয়ে লগইন করুন।' : 'কয়েক সেকেন্ডেই আপনার shopping account তৈরি করুন।'}</p></div><form id="authForm" class="stack-form"><input type="hidden" name="authMode" value="${mode}"><input name="name" placeholder="আপনার নাম" ${mode === 'login' ? 'hidden' : 'required'}><input name="identifier" placeholder="ইমেইল অথবা মোবাইল নম্বর" required><input name="phone" placeholder="মোবাইল নম্বর" ${mode === 'login' ? 'hidden' : 'required'}><input name="address" placeholder="ডেলিভারি ঠিকানা" ${mode === 'login' ? 'hidden' : ''}><input name="password" type="password" placeholder="পাসওয়ার্ড" required minlength="6"><button class="primary-button" type="submit">${mode === 'login' ? 'লগইন করুন' : 'রেজিস্টার করুন'} <span>→</span></button></form><p class="form-switch">${mode === 'login' ? 'নতুন এখানে?' : 'আগেই অ্যাকাউন্ট আছে?'} <button type="button" data-auth-mode="${mode === 'login' ? 'register' : 'login'}">${mode === 'login' ? 'রেজিস্টার করুন' : 'লগইন করুন'}</button></p>`;
+  if (currentUser) { $('#authContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">MY ACCOUNT</p><h2>${escapeHtml(currentUser.name)}</h2><p>${escapeHtml(currentUser.email || currentUser.phone)}</p></div><div class="account-actions"><button class="primary-button" data-action="my-orders">আমার অর্ডার ও রিভিউ</button><button class="outline-button" data-action="change-password">পাসওয়ার্ড পরিবর্তন</button>${currentUser.role === 'admin' ? '<button class="dark-button" data-action="open-admin">অ্যাডমিন প্যানেল</button>' : ''}<button class="outline-button" data-action="logout">লগআউট</button></div>`; return; }
+  $('#authContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">WELCOME BACK</p><h2>${mode === 'login' ? 'অ্যাকাউন্টে লগইন করুন' : 'নতুন অ্যাকাউন্ট খুলুন'}</h2><p>${mode === 'login' ? 'ইমেইল অথবা মোবাইল নম্বর দিয়ে লগইন করুন।' : 'কয়েক সেকেন্ডেই আপনার shopping account তৈরি করুন।'}</p></div><form id="authForm" class="stack-form"><input type="hidden" name="authMode" value="${mode}"><input name="name" placeholder="আপনার নাম" ${mode === 'login' ? 'hidden' : 'required'}><input name="identifier" placeholder="ইমেইল অথবা মোবাইল নম্বর" required><input name="phone" placeholder="মোবাইল নম্বর" ${mode === 'login' ? 'hidden' : 'required'}><input name="address" placeholder="ডেলিভারি ঠিকানা" ${mode === 'login' ? 'hidden' : ''}><input name="password" type="password" placeholder="পাসওয়ার্ড" required minlength="6"><button class="primary-button" type="submit">${mode === 'login' ? 'লগইন করুন' : 'রেজিস্টার করুন'} <span>→</span></button></form>${mode === 'login' ? '<button type="button" class="forgot-password-button" data-action="forgot-password">Forgot Password?</button>' : ''}<p class="form-switch">${mode === 'login' ? 'নতুন এখানে?' : 'আগেই অ্যাকাউন্ট আছে?'} <button type="button" data-auth-mode="${mode === 'login' ? 'register' : 'login'}">${mode === 'login' ? 'রেজিস্টার করুন' : 'লগইন করুন'}</button></p>`;
 }
 function ensureAuthDistrictField() { const form = $('#authForm'); if (!form || form.querySelector('[name="district"]') || form.querySelector('[name="name"]')?.hidden) return; const address = form.querySelector('[name="address"]'); address.insertAdjacentHTML('beforebegin', `<select name="district" required><option value="">জেলা নির্বাচন করুন</option>${bangladeshDistricts.map(district => `<option value="${escapeHtml(district)}" ${currentUser?.district === district ? 'selected' : ''}>${escapeHtml(district)}</option>`).join('')}</select>`); }
 function openAuth(mode = 'login') { renderAuth(mode); ensureAuthDistrictField(); openModal('authModal'); }
 function renderOrders() {
-  const mine = currentUser ? orders.filter(order => order.userId === currentUser.id) : [];
-  $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">MY DASHBOARD</p><h2>অর্ডার ও রিভিউ</h2><p>Order ID, mobile বা email দিয়ে shipment track করতে পারবেন।</p></div><div class="track-row"><input id="trackInput" placeholder="Order ID / mobile / email"><button class="outline-button" data-action="track-order">Track</button></div>${mine.length ? `<div class="order-list">${mine.slice().reverse().map(order => `<article class="order-card"><div><b>Order #${order.id}</b><small>${escapeHtml(order.createdAt)}</small></div><span class="status ${order.status}">${escapeHtml(order.statusLabel)}</span><strong>${money(order.total)}</strong><p>${order.items.map(item => { const reviewed = reviews.some(review => review.orderId === order.id && review.productId === item.id); const reviewAction = order.status === 'delivered' ? (reviewed ? ' · Reviewed' : ` <button class="mini-button" data-review-product="${item.id}" data-review-order="${order.id}">Review</button>`) : ''; return `${escapeHtml(item.name)} × ${item.quantity}${reviewAction}`; }).join(', ')}</p>${order.trackingUrl ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>` : order.bookingNumber ? `<small>Courier: ${escapeHtml(order.courierName || 'Manual')} · Booking: ${escapeHtml(order.bookingNumber)}</small>` : ''}</article>`).join('')}</div>` : '<div class="empty-state">এখনও কোনো অর্ডার নেই।</div>'}`;
+  const mine = getCustomerOrders();
+
+  const filtered = !accountOrderFilter
+    ? mine
+    : mine.filter(order => {
+        if (accountOrderFilter === 'to-ship') {
+          return ['pending', 'confirmed'].includes(order.status);
+        }
+
+        if (accountOrderFilter === 'to-receive') {
+          return order.status === 'shipped';
+        }
+
+        if (accountOrderFilter === 'to-review') {
+          return order.status === 'delivered' &&
+            order.items?.some(item =>
+              !reviews.some(review =>
+                review.orderId === order.id &&
+                review.productId === Number(item.id)
+              )
+            );
+        }
+
+        if (accountOrderFilter === 'return') {
+          return ['returned', 'return_requested'].includes(order.status);
+        }
+
+        if (accountOrderFilter === 'cancelled') {
+          return ['cancelled', 'cancellation', 'cancellation_requested'].includes(order.status);
+        }
+
+        return true;
+      });
+
+  const titleMap = {
+    '': 'My Orders',
+    'to-ship': 'To Ship',
+    'to-receive': 'To Receive',
+    'to-review': 'To Review',
+    'return': 'Return',
+    'cancelled': 'Cancellation'
+  };
+
+  $('#ordersContent').innerHTML = `
+    <div class="panel-heading">
+      <p class="eyebrow">MY DASHBOARD</p>
+      <h2>${titleMap[accountOrderFilter] || 'My Orders'}</h2>
+      <p>${filtered.length}টি order পাওয়া গেছে।</p>
+    </div>
+
+    <button
+      type="button"
+      class="outline-button"
+      data-action="my-orders-back"
+      style="margin-bottom:14px"
+    >← Dashboard</button>
+
+    ${filtered.length
+      ? `<div class="order-list">${filtered.slice().reverse().map(order => `
+          <article class="order-card">
+            <div>
+              <b>Order #${escapeHtml(order.id)}</b>
+              <small>${escapeHtml(order.createdAt)}</small>
+            </div>
+
+            <span class="status ${escapeHtml(order.status)}">
+              ${escapeHtml(order.statusLabel)}
+            </span>
+
+            <strong>${money(order.total)}</strong>
+
+            <p>
+              ${order.items.map(item => {
+                const reviewed = reviews.some(review =>
+                  review.orderId === order.id &&
+                  review.productId === Number(item.id)
+                );
+
+                const reviewAction = order.status === 'delivered'
+                  ? (reviewed
+                      ? ' · Reviewed'
+                      : ` <button class="mini-button" data-review-product="${item.id}" data-review-order="${order.id}">Review</button>`)
+                  : '';
+
+                return `${escapeHtml(item.name)} × ${item.quantity}${reviewAction}`;
+              }).join(', ')}
+            </p>
+
+            ${order.trackingUrl
+              ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>`
+              : order.bookingNumber
+                ? `<small>Courier: ${escapeHtml(order.courierName || 'Manual')} · Booking: ${escapeHtml(order.bookingNumber)}</small>`
+                : ''}
+          </article>
+        `).join('')}</div>`
+      : '<div class="empty-state">এই category-তে এখন কোনো order নেই।</div>'
+    }
+  `;
 }
+
 function showGiftDetails(giftId) { const gift = gifts.find(item => item.id === Number(giftId)); if (!gift) return; const selected = products.filter(product => (gift.productIds || []).map(Number).includes(Number(product.id)) || (gift.giftCategory && productMatchesCategory(product, gift.giftCategory))); const cards = selected.map(product => `<article class="product-card"><div class="product-image"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}"><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>ব্যাগে যোগ করুন</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2><p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
 function showAdDetails(adId) { const ad = ads.find(item => item.id === Number(adId)); if (!ad) return; const selected = products.filter(product => (ad.productIds || []).map(Number).includes(Number(product.id)) || (ad.targetCategory && productMatchesCategory(product, ad.targetCategory))); const cards = selected.map(productMarkup).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP CAMPAIGN</p><h2>${escapeHtml(ad.title)}</h2><p>${escapeHtml(ad.text)}</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
 function showMallProducts() {
@@ -737,7 +927,7 @@ function openCheckout() { if (!cart.length) return showToast('আগে কি�
 function renderAdmin() {
   if (!currentUser || currentUser.role !== 'admin') { pendingAdmin = true; currentUser = null; write('laiba_current_user', null); return openAuth('login'); }
   const revenue = orders.reduce((sum, order) => sum + order.total, 0);
-  $('#adminContent').innerHTML = `<div class="admin-top"><div><p class="eyebrow">ZIYANA SHOP CONTROL ROOM</p><h2>অ্যাডমিন প্যানেল</h2><p>পণ্য, অর্ডার, coupon এবং campaign content এখান থেকে পরিচালনা করুন।</p></div><button class="outline-button" data-action="admin-logout">লগআউট</button></div><div class="admin-stats"><div><b>${products.length}</b><span>পণ্য</span></div><div><b>${orders.length}</b><span>অর্ডার</span></div><div><b>${money(revenue)}</b><span>বিক্রি</span></div><div><b>${coupons.length}</b><span>কুপন</span></div></div><div class="admin-grid"><section class="admin-section"><h3>নতুন পণ্য যোগ করুন</h3><form id="productForm" class="admin-form"><input name="name" placeholder="পণ্যের নাম" required><div class="two-fields"><input name="price" type="number" placeholder="দাম" required><input name="old" type="number" placeholder="আগের দাম" required></div><div class="two-fields"><input name="category" placeholder="ক্যাটাগরি" value="ফ্যাশন"><input name="stock" type="number" placeholder="স্টক" value="10" required></div><input name="image" type="url" placeholder="Image URL" required><textarea name="description" placeholder="পণ্যের বর্ণনা" required></textarea><button class="primary-button" type="submit">পণ্য প্রকাশ করুন</button></form></section><section class="admin-section"><h3>কুপন তৈরি করুন</h3><form id="couponForm" class="admin-form"><input name="code" placeholder="যেমন: EID20" required><div class="two-fields"><select name="type"><option value="percent">Discount in %</option><option value="freeShipping">Free shipping</option></select><input name="value" type="number" placeholder="Discount %" min="1" max="100"></div><div class="two-fields"><input name="maxDiscount" type="number" placeholder="Maximum discount" value="0"><input name="minOrder" type="number" placeholder="Minimum order" value="0"></div><input name="expiresAt" type="datetime-local"><button class="primary-button" type="submit">কুপন সক্রিয় করুন</button></form><div class="admin-list">${coupons.map(coupon => `<div class="admin-list-row"><span><b>${escapeHtml(coupon.code)}</b><small>${coupon.type === 'freeShipping' ? 'Free shipping' : `${coupon.value}% off · max ${money(coupon.maxDiscount || 0)}`} · min ${money(coupon.minOrder)}${coupon.expiresAt ? ` · expires ${escapeHtml(coupon.expiresAt)}` : ''}</small></span><button data-edit-coupon="${escapeHtml(coupon.code)}">Edit</button><button data-delete-coupon="${escapeHtml(coupon.code)}">×</button></div>`).join('')}</div></section></div><section class="admin-section"><div class="section-inline"><h3>পণ্য তালিকা</h3><span>${products.length} items</span></div><div class="admin-list">${products.map(product => `<div class="admin-list-row"><span><b>${escapeHtml(product.name)}</b><small>${money(product.price)} · ${product.stock} stock · ${escapeHtml(product.category)}</small></span><button data-delete-product="${product.id}">×</button></div>`).join('')}</div></section><section class="admin-section"><div class="section-inline"><h3>ক্যাম্পেইন / ad card</h3><button class="outline-button" data-action="toggle-ad-form">নতুন ad card</button></div><form id="adForm" class="admin-form" hidden><input name="title" placeholder="Ad title" required><input name="text" placeholder="Short message" required><input name="image" type="url" placeholder="Image URL" required><input name="link" placeholder="Link, e.g. #campaign" value="#campaign"><fieldset class="campaign-picker"><legend>এই campaign-এ products বাছাই করুন</legend>${products.map(product => `<label><input type="checkbox" name="campaignProducts" value="${product.id}"><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">Ad publish করুন</button></form><div class="admin-list">${ads.map(ad => `<div class="admin-list-row"><span><b>${escapeHtml(ad.title)}</b><small>${escapeHtml(ad.text)} · ${(ad.productIds || []).length} products · ${ad.active ? 'Active' : 'Hidden'}</small></span><button data-edit-ad="${ad.id}">Edit</button><button data-delete-ad="${ad.id}">×</button></div>`).join('')}</div></section><section class="admin-section"><div class="section-inline"><h3>সাম্প্রতিক অর্ডার</h3><span>${orders.length} total</span></div><div class="admin-list">${orders.length ? orders.slice().reverse().map(order => `<div class="admin-list-row order-admin-row"><span><b>#${order.id} · ${escapeHtml(order.customer.name)}</b><small>${escapeHtml(order.customer.phone)} · ${money(order.total)}</small></span><button class="outline-button" data-view-order="${order.id}">Full details</button><select data-order-status="${order.id}"><option ${order.status === 'pending' ? 'selected' : ''} value="pending">Pending</option><option ${order.status === 'confirmed' ? 'selected' : ''} value="confirmed">Confirmed</option><option ${order.status === 'shipped' ? 'selected' : ''} value="shipped">Shipped</option><option ${order.status === 'delivered' ? 'selected' : ''} value="delivered">Delivered</option></select></div>`).join('') : '<div class="empty-state">এখনও কোনো অর্ডার নেই।</div>'}</div></section>`;
+  $('#adminContent').innerHTML = `<div class="admin-top"><div><p class="eyebrow">ZIYANA SHOP CONTROL ROOM</p><h2>অ্যাডমিন প্যানেল</h2><p>পণ্য, অর্ডার, coupon এবং campaign content এখান থেকে পরিচালনা করুন।</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="outline-button" data-action="change-password">পাসওয়ার্ড পরিবর্তন</button><button class="outline-button" data-action="admin-logout">লগআউট</button></div></div><div class="admin-stats"><div><b>${products.length}</b><span>পণ্য</span></div><div><b>${orders.length}</b><span>অর্ডার</span></div><div><b>${money(revenue)}</b><span>বিক্রি</span></div><div><b>${coupons.length}</b><span>কুপন</span></div></div><div class="admin-grid"><section class="admin-section"><h3>নতুন পণ্য যোগ করুন</h3><form id="productForm" class="admin-form"><input name="name" placeholder="পণ্যের নাম" required><div class="two-fields"><input name="price" type="number" placeholder="দাম" required><input name="old" type="number" placeholder="আগের দাম" required></div><div class="two-fields"><input name="category" placeholder="ক্যাটাগরি" value="ফ্যাশন"><input name="stock" type="number" placeholder="স্টক" value="10" required></div><input name="image" type="url" placeholder="Image URL" required><textarea name="description" placeholder="পণ্যের বর্ণনা" required></textarea><button class="primary-button" type="submit">পণ্য প্রকাশ করুন</button></form></section><section class="admin-section"><h3>কুপন তৈরি করুন</h3><form id="couponForm" class="admin-form"><input name="code" placeholder="যেমন: EID20" required><div class="two-fields"><select name="type"><option value="percent">Discount in %</option><option value="freeShipping">Free shipping</option></select><input name="value" type="number" placeholder="Discount %" min="1" max="100"></div><div class="two-fields"><input name="maxDiscount" type="number" placeholder="Maximum discount" value="0"><input name="minOrder" type="number" placeholder="Minimum order" value="0"></div><input name="expiresAt" type="datetime-local"><button class="primary-button" type="submit">কুপন সক্রিয় করুন</button></form><div class="admin-list">${coupons.map(coupon => `<div class="admin-list-row"><span><b>${escapeHtml(coupon.code)}</b><small>${coupon.type === 'freeShipping' ? 'Free shipping' : `${coupon.value}% off · max ${money(coupon.maxDiscount || 0)}`} · min ${money(coupon.minOrder)}${coupon.expiresAt ? ` · expires ${escapeHtml(coupon.expiresAt)}` : ''}</small></span><button data-edit-coupon="${escapeHtml(coupon.code)}">Edit</button><button data-delete-coupon="${escapeHtml(coupon.code)}">×</button></div>`).join('')}</div></section></div><section class="admin-section"><div class="section-inline"><h3>পণ্য তালিকা</h3><span>${products.length} items</span></div><div class="admin-list">${products.map(product => `<div class="admin-list-row"><span><b>${escapeHtml(product.name)}</b><small>${money(product.price)} · ${product.stock} stock · ${escapeHtml(product.category)}</small></span><button data-delete-product="${product.id}">×</button></div>`).join('')}</div></section><section class="admin-section"><div class="section-inline"><h3>ক্যাম্পেইন / ad card</h3><button class="outline-button" data-action="toggle-ad-form">নতুন ad card</button></div><form id="adForm" class="admin-form" hidden><input name="title" placeholder="Ad title" required><input name="text" placeholder="Short message" required><input name="image" type="url" placeholder="Image URL" required><input name="link" placeholder="Link, e.g. #campaign" value="#campaign"><fieldset class="campaign-picker"><legend>এই campaign-এ products বাছাই করুন</legend>${products.map(product => `<label><input type="checkbox" name="campaignProducts" value="${product.id}"><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">Ad publish করুন</button></form><div class="admin-list">${ads.map(ad => `<div class="admin-list-row"><span><b>${escapeHtml(ad.title)}</b><small>${escapeHtml(ad.text)} · ${(ad.productIds || []).length} products · ${ad.active ? 'Active' : 'Hidden'}</small></span><button data-edit-ad="${ad.id}">Edit</button><button data-delete-ad="${ad.id}">×</button></div>`).join('')}</div></section><section class="admin-section"><div class="section-inline"><h3>সাম্প্রতিক অর্ডার</h3><span>${orders.length} total</span></div><div class="admin-list">${orders.length ? orders.slice().reverse().map(order => `<div class="admin-list-row order-admin-row"><span><b>#${order.id} · ${escapeHtml(order.customer.name)}</b><small>${escapeHtml(order.customer.phone)} · ${money(order.total)}</small></span><button class="outline-button" data-view-order="${order.id}">Full details</button><select data-order-status="${order.id}"><option ${order.status === 'pending' ? 'selected' : ''} value="pending">Pending</option><option ${order.status === 'confirmed' ? 'selected' : ''} value="confirmed">Confirmed</option><option ${order.status === 'shipped' ? 'selected' : ''} value="shipped">Shipped</option><option ${order.status === 'delivered' ? 'selected' : ''} value="delivered">Delivered</option><option ${order.status === 'cancelled' ? 'selected' : ''} value="cancelled">Cancelled</option><option ${order.status === 'returned' ? 'selected' : ''} value="returned">Returned</option></select></div>`).join('') : '<div class="empty-state">এখনও কোনো অর্ডার নেই।</div>'}</div></section>`;
     $('#adminContent').insertAdjacentHTML('afterbegin', '<div class="admin-order-search"><input id="adminOrderSearch" placeholder="Order ID, mobile or email"><button class="outline-button" data-action="admin-search-order">Search order</button></div>');
     document.querySelectorAll('[data-view-order]').forEach(button => button.insertAdjacentHTML('afterend', `<button class="outline-button" data-edit-tracking="${button.dataset.viewOrder}">Courier</button>`));
   $('#adminContent').insertAdjacentHTML('beforeend', `<section class="admin-section"><h3>Free gift campaign</h3><form id="giftForm" class="admin-form"><input name="title" placeholder="Gift title, e.g. Dove Shampoo" required><input name="image" type="url" placeholder="Gift image URL" required><input name="stock" type="number" min="1" placeholder="Gift stock" required><input name="quantity" type="number" min="1" value="1" placeholder="Give quantity"><input name="expiresAt" type="datetime-local"><fieldset class="campaign-picker"><legend>কোন products কিনলে gift যাবে?</legend>${products.map(product => `<label><input type="checkbox" name="giftProducts" value="${product.id}"><span>${escapeHtml(product.name)}</span><small>${money(product.price)}</small></label>`).join('')}</fieldset><button class="primary-button" type="submit">Gift campaign চালু করুন</button></form><div class="admin-list">${gifts.map(gift => `<div class="admin-list-row"><span><b>${escapeHtml(gift.title)}</b><small>Stock ${gift.stock} · ${(gift.productIds || []).length} products · ${gift.active ? 'Active' : 'Out'}</small></span></div>`).join('')}</div></section>`);
@@ -799,8 +989,7 @@ function setupAdminWorkspace() {
       section.querySelector('[data-admin-toggle]')?.remove();
       return;
     }
-    if (heading && !section.querySelector('[data-admin-toggle]')) heading.insertAdjacentHTML('afterend', '<button class="admin-card-toggle" type="button" data-admin-toggle>Open</button>');
-    section.classList.add('is-collapsed');
+section.classList.add('is-collapsed');
   });
   if (giftForm && !giftForm.querySelector('[name="giftCategory"]')) {
   giftForm.insertAdjacentHTML('beforeend', `<select name="giftCategory"><option value="">সব category</option>${getActiveCategories().map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('')}</select>`);
@@ -840,43 +1029,116 @@ function renderAdminProductList(term = '') { const list = $('#adminProductList')
 function searchProducts() { const term = $('#searchInput').value.trim().toLowerCase(); showingAllProducts = Boolean(term); renderProducts(term ? products.filter(item => item.name.toLowerCase().includes(term) || item.category.toLowerCase().includes(term)) : products); $('#searchSuggestions').hidden = true; $('#campaign').scrollIntoView({behavior:'smooth'}); }
 function captureCheckoutDraft() { const form = $('#checkoutForm'); if (!form) return checkoutDraft; const data = Object.fromEntries(new FormData(form)); checkoutDraft = {name:data.name || '', phone:data.phone || '', address:data.address || '', payment:data.payment || 'cod', district:data.district || 'ঢাকা'}; return checkoutDraft; }
 function applyCoupon() { const input = $('#couponInput'); const code = input.value.trim().toUpperCase(); const coupon = coupons.find(item => item.code === code && item.active); const subtotal = checkoutTotals().subtotal; const draft = captureCheckoutDraft(); if (!coupon) { appliedCoupon = null; $('#couponMessage').textContent = 'এই coupon code পাওয়া যায়নি'; return; } if (coupon.expiresAt && new Date(coupon.expiresAt) <= new Date()) { $('#couponMessage').textContent = 'এই coupon-এর মেয়াদ শেষ'; return; } if (subtotal < coupon.minOrder) { $('#couponMessage').textContent = `Minimum order ${money(coupon.minOrder)}`; return; } appliedCoupon = coupon; checkoutDraft = draft; renderCheckout(draft); ensureCheckoutRegionField(); showToast(`${coupon.code} applied হয়েছে`); }
-function placeOrder(data) { const totals = checkoutTotals(); const gift = getActiveGift(); const order = {id:String(Date.now()).slice(-6),userId:currentUser?.id || null,customer:{name:data.name,email:currentUser?.email || data.email || '',phone:data.phone,address:data.address},payment:data.payment,items:cart.map(item => ({id:item.id,name:item.name,price:item.price,quantity:item.quantity})),gift:gift ? {id:gift.id,title:gift.title,quantity:gift.quantity || 1} : null,subtotal:totals.subtotal,discount:totals.discount,shipping:totals.shipping,total:totals.total,status:'pending',statusLabel:'অপেক্ষমাণ',createdAt:new Date().toLocaleString('bn-BD')}; orders.push(order); if (currentUser) { currentUser.phone = data.phone; currentUser.address = data.address; users = users.map(user => user.id === currentUser.id ? currentUser : user); } cart.forEach(item => { const product = products.find(entry => entry.id === item.id); if (product) product.stock = Math.max(0, product.stock - item.quantity); }); if (gift) gift.stock = Math.max(0, gift.stock - (gift.quantity || 1)); cart = []; appliedCoupon = null; checkoutDraft = {name:'',phone:'',address:'',payment:'cod',district:'ঢাকা'}; saveState(); updateCart(); renderGifts(); closeModal('checkoutModal'); renderProducts(); showToast('অর্ডার সফলভাবে নেওয়া হয়েছে ✓'); }
+function placeOrder(data) {
+  const totals = checkoutTotals();
+  const gift = getActiveGift();
 
-renderCategories(); renderAds(); renderHero(); renderCampaignBanner(); renderGifts(); renderProducts(); updateCart();
-void loadCloudState().catch(() => showToast('Cloud data পাওয়া যায়নি, local data ব্যবহার হচ্ছে'));
-$('#searchButton').addEventListener('click', searchProducts); $('#searchInput').addEventListener('keydown', event => { if (event.key === 'Enter') searchProducts(); });
-$('#searchInput').addEventListener('input', event => { const term = event.target.value.trim().toLowerCase(); const matches = products.filter(item => item.name.toLowerCase().includes(term)).slice(0,3); $('#searchSuggestions').innerHTML = matches.map(item => `<div data-suggest="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>`).join(''); $('#searchSuggestions').hidden = !term || !matches.length; });
-document.addEventListener('click', event => {
-  const subcategoryButton = event.target.closest('[data-category-subcategory]');
-  if (subcategoryButton) {
-    event.preventDefault();
-    const key = String(subcategoryButton.dataset.categoryId || '').replace(/[^a-zA-Z0-9_-]/g, '-');
-    window[`${key}Subcategory`] = subcategoryButton.dataset.categorySubcategory || '';
-    window[`${key}ShowingAll`] = false;
-    renderCategoryRows();
-    document.querySelector(`#category-${CSS.escape(subcategoryButton.dataset.categoryId)}`)?.scrollIntoView({behavior:'smooth'});
-    return;
+  const order = {
+    id:String(Date.now()).slice(-6),
+    cloudId:currentUser?.id && String(currentUser.id).includes('-')
+      ? crypto.randomUUID()
+      : null,
+    userId:currentUser?.id || null,
+    customer:{
+      name:data.name,
+      email:currentUser?.email || data.email || '',
+      phone:data.phone,
+      address:data.address
+    },
+    payment:data.payment,
+    items:cart.map(item => ({
+      id:item.id,
+      name:item.name,
+      price:item.price,
+      quantity:item.quantity
+    })),
+    gift:gift ? {
+      id:gift.id,
+      title:gift.title,
+      quantity:gift.quantity || 1
+    } : null,
+    subtotal:totals.subtotal,
+    discount:totals.discount,
+    shipping:totals.shipping,
+    total:totals.total,
+    status:'pending',
+    statusLabel:'অপেক্ষমাণ',
+    stockDeducted:false,
+    stockRestored:false,
+    createdAt:new Date().toLocaleString('bn-BD')
+  };
+
+  orders.push(order);
+
+  if (currentUser) {
+    currentUser.phone = data.phone;
+    currentUser.address = data.address;
+    users = users.map(user =>
+      user.id === currentUser.id ? currentUser : user
+    );
   }
 
-  const button = event.target.closest('[data-category-more]');
-  if (!button) return;
+  /*
+    IMPORTANT:
+    No product stock or free-gift stock is reduced here.
+    Inventory changes only through the admin status RPC.
+  */
+  cart = [];
+  appliedCoupon = null;
+  checkoutDraft = {
+    name:'',
+    phone:'',
+    address:'',
+    payment:'cod',
+    district:'ঢাকা'
+  };
 
-  event.preventDefault();
+  saveState();
+  updateCart();
+  renderGifts();
+  closeModal('checkoutModal');
+  renderProducts();
+  showToast('অর্ডার সফলভাবে নেওয়া হয়েছে ✓');
+}
+const bindClick = (selector, handler) => {
+  const element = $(selector);
+  if (element) element.addEventListener('click', handler);
+};
 
-  const category = getCategoryByName(button.dataset.categoryMore);
-  if (!category) return;
+bindClick('#closeModal', () => closeModal('productModal'));
 
-  const key = String(category.id).replace(/[^a-zA-Z0-9_-]/g, '-');
-  window[`${key}ShowingAll`] = !window[`${key}ShowingAll`];
-  renderCategoryRows();
+bindClick('#cartButton', () => {
+  const drawer = $('#cartDrawer');
+  const overlay = $('#overlay');
+  if (drawer) drawer.classList.add('open');
+  if (overlay) overlay.hidden = false;
 });
-$('#closeModal').addEventListener('click', () => closeModal('productModal')); $('#cartButton').addEventListener('click', () => { $('#cartDrawer').classList.add('open'); $('#overlay').hidden = false; }); $('#closeCart').addEventListener('click', () => { $('#cartDrawer').classList.remove('open'); if (!activeModal) $('#overlay').hidden = true; });
-$('#accountButton').addEventListener('click', () => { renderAuth(); openModal('authModal'); }); $('#ordersButton').addEventListener('click', openOrders); $('.checkout-button').addEventListener('click', openCheckout); $('#categoryMenu').addEventListener('click', () => $('#categories').scrollIntoView({behavior:'smooth'}));
+
+bindClick('#closeCart', () => {
+  const drawer = $('#cartDrawer');
+  const overlay = $('#overlay');
+  if (drawer) drawer.classList.remove('open');
+  if (!activeModal && overlay) overlay.hidden = true;
+});
+
+bindClick('#accountButton', () => {
+  renderAuth();
+  openModal('authModal');
+});
+
+bindClick('#ordersButton', openOrders);
+
+bindClick('.checkout-button', openCheckout);
+
+bindClick('#categoryMenu', () => {
+  const categories = $('#categories');
+  if (categories) categories.scrollIntoView({behavior:'smooth'});
+});
 function resetAdminAccount() { const admin = {id:1,name:'Laiba Admin',email:'admin@laiba.shop',phone:'01700000000',password:'admin123',role:'admin',address:''}; users = [admin, ...users.filter(user => user.role !== 'admin')]; currentUser = null; write('laiba_current_user', null); saveState(); }
 function handleRoute() { const params = new URLSearchParams(location.search); if (params.get('reset-admin') === '1') resetAdminAccount(); if (location.hash === '#admin-panel' || params.get('view') === 'admin') renderAdmin(); }
 handleRoute(); window.addEventListener('hashchange', handleRoute);
 
-function openProductDetails(product) { const images = productImages(product); const videos = productVideos(product); const productReviews = reviews.filter(review => review.productId === product.id); const imageMarkup = images.map((url, index) => `<img src="${escapeHtml(url)}" alt="${escapeHtml(product.name)} image ${index + 1}" loading="lazy">`).join(''); const videoMarkup = videos.map((url, index) => `<video controls preload="metadata" playsinline aria-label="${escapeHtml(product.name)} video ${index + 1}"><source src="${escapeHtml(url)}">আপনার browser video চালাতে পারছে না।</video>`).join(''); $('#modalContent').innerHTML = `<div class="modal-product"><div class="product-media-gallery">${imageMarkup}${videoMarkup}</div><div><p class="eyebrow">ZIYANA SHOP SELECT</p><h2>${escapeHtml(product.name)}</h2><div><span class="stars">★★★★★</span> <span class="rating">${escapeHtml(product.rating)} / 5</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><p>${escapeHtml(product.description)}</p><button class="primary-button" data-add="${product.id}">ব্যাগে যোগ করুন</button><div class="product-reviews"><h3>Customer reviews (${productReviews.length})</h3>${productReviews.length ? productReviews.map(review => `<p><b>${'★'.repeat(review.rating)}</b> ${escapeHtml(review.comment)} <small>· ${escapeHtml(review.userName)}</small></p>`).join('') : '<p>এখনও কোনো review নেই।</p>'}</div></div></div>`; openModal('productModal'); }
+function openProductDetails(product) { rememberRecentlyViewed(product.id); const images = productImages(product); const videos = productVideos(product); const productReviews = reviews.filter(review => review.productId === product.id); const imageMarkup = images.map((url, index) => `<img src="${escapeHtml(url)}" alt="${escapeHtml(product.name)} image ${index + 1}" loading="lazy">`).join(''); const videoMarkup = videos.map((url, index) => `<video controls preload="metadata" playsinline aria-label="${escapeHtml(product.name)} video ${index + 1}"><source src="${escapeHtml(url)}">আপনার browser video চালাতে পারছে না।</video>`).join(''); $('#modalContent').innerHTML = `<div class="modal-product"><div class="product-media-gallery">${imageMarkup}${videoMarkup}</div><div><p class="eyebrow">ZIYANA SHOP SELECT</p><h2>${escapeHtml(product.name)}</h2><div><span class="stars">★★★★★</span> <span class="rating">${escapeHtml(product.rating)} / 5</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><p>${escapeHtml(product.description)}</p><button class="primary-button" data-add="${product.id}">ব্যাগে যোগ করুন</button><div class="product-reviews"><h3>Customer reviews (${productReviews.length})</h3>${productReviews.length ? productReviews.map(review => `<p><b>${'★'.repeat(review.rating)}</b> ${escapeHtml(review.comment)} <small>· ${escapeHtml(review.userName)}</small></p>`).join('') : '<p>এখনও কোনো review নেই।</p>'}</div></div></div>`; openModal('productModal'); }
 document.addEventListener('click', event => { const card = event.target.closest('.product-card'); if (!card || event.target.closest('button')) return; const product = products.find(item => item.name === card.querySelector('h3')?.textContent); if (!product) return; event.preventDefault(); event.stopImmediatePropagation(); openProductDetails(product); }, true);
 
 document.addEventListener('click', event => {
@@ -896,7 +1158,7 @@ document.addEventListener('click', event => {
   if (action === 'mall-products') { event.preventDefault(); return showMallProducts(); }
   const infoPage = event.target.closest('[data-info-page]'); if (infoPage) { event.preventDefault(); return showInfoPage(infoPage.dataset.infoPage); }
   const buyNow = event.target.closest('[data-buy-now]'); if (buyNow) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(buyNow.dataset.buyNow)); if (!product || product.stock < 1) return showToast('এই পণ্যটি এখন স্টকে নেই'); addToCart(buyNow.dataset.buyNow); return openCheckout(); }
-  if (action === 'open-admin') return renderAdmin(); if (action === 'my-orders') return openOrders(); if (action === 'reset-password') { const password = `Laiba${String(currentUser.id).slice(-4)}`; currentUser.password = password; users = users.map(user => user.id === currentUser.id ? currentUser : user); saveState(); return showToast(`Default password: ${password}`); } if (action === 'toggle-ad-form') { $('#adForm').hidden = !$('#adForm').hidden; return; } if (action === 'apply-coupon') return applyCoupon(); if (action === 'remove-coupon') { appliedCoupon = null; renderCheckout(captureCheckoutDraft()); showToast('Coupon removed'); return; }
+  if (action === 'open-admin') return renderAdmin(); if (action === 'my-orders') { if (currentUser?.role === 'admin') { accountOrderFilter = ''; renderOrders(); openModal('ordersModal'); return; } return renderCustomerDashboard(); } if (action === 'reset-password') { const password = `Laiba${String(currentUser.id).slice(-4)}`; currentUser.password = password; users = users.map(user => user.id === currentUser.id ? currentUser : user); saveState(); return showToast(`Default password: ${password}`); } if (action === 'toggle-ad-form') { $('#adForm').hidden = !$('#adForm').hidden; return; } if (action === 'apply-coupon') return applyCoupon(); if (action === 'remove-coupon') { appliedCoupon = null; renderCheckout(captureCheckoutDraft()); showToast('Coupon removed'); return; }
   if (action === 'track-order') { const query = $('#trackInput').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || users.find(user => user.id === item.userId)?.email?.toLowerCase() === query); if (!order) return showToast('Order পাওয়া যায়নি'); return showAdminOrder(order.id); }
   if (action === 'public-track-order') { const query = $('#publicTrackInput').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || item.customer.email?.toLowerCase() === query); if (!order) { $('#publicTrackResult').innerHTML = '<p class="empty-state">এই তথ্য দিয়ে কোনো order পাওয়া যায়নি।</p>'; return; } $('#publicTrackResult').innerHTML = `<article class="order-card tracker-result"><div><b>Order #${escapeHtml(order.id)}</b><small>${escapeHtml(order.createdAt)}</small></div><span class="status ${order.status}">${escapeHtml(order.statusLabel)}</span><strong>${money(order.total)}</strong><p>${order.items.map(item => `${escapeHtml(item.name)} × ${item.quantity}`).join(', ')}</p>${order.trackingUrl ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>` : '<small>Courier tracking update হলে এখানে দেখা যাবে।</small>'}</article>`; return; }
   if (action === 'admin-search-order') { const query = $('#adminOrderSearch').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || users.find(user => user.id === item.userId)?.email?.toLowerCase() === query); if (!order) return showToast('Order পাওয়া যায়নি'); return showAdminOrder(order.id); }
@@ -1051,7 +1313,7 @@ document.addEventListener('change', event => {
 
   const orderStatus = event.target.closest('[data-order-status]');
   if (!orderStatus) return;
- const order = orders.find(item => item.id === orderStatus.dataset.orderStatus); if (order) { order.status = orderStatus.value; order.statusLabel = {pending:'অপেক্ষমাণ',confirmed:'কনফার্মড',shipped:'শিপড',delivered:'ডেলিভারড'}[order.status]; saveState(); showToast('অর্ডারের status আপডেট হয়েছে'); } });
+ const order = orders.find(item => item.id === orderStatus.dataset.orderStatus); if (order) { void handleAdminOrderStatusChange(order, orderStatus); } });
 document.addEventListener('input', event => { if (event.target.id === 'adminProductSearch') renderAdminProductList(event.target.value); });
 document.addEventListener('submit', event => {
   event.preventDefault(); const form = event.target; const data = Object.fromEntries(new FormData(form));
@@ -1201,3 +1463,2006 @@ if (!window.__campaignAutoSliderBound) {
   const observer = new MutationObserver(refreshCampaignSliders);
   observer.observe(document.body, {childList:true, subtree:true});
 }
+
+/* ADMIN TILE -> EDITOR POPUP */
+if (!window.__adminTileEditorBound) {
+  window.__adminTileEditorBound = true;
+
+  let adminEditorState = null;
+  let decorateTimer = null;
+
+  const closeAdminEditor = (restore = true) => {
+    if (!adminEditorState) return;
+
+    const {section, placeholder, overlay} = adminEditorState;
+
+    if (
+      restore &&
+      placeholder?.isConnected &&
+      section
+    ) {
+      section.classList.add('admin-dashboard-tile');
+      section.classList.add('is-collapsed');
+      section.dataset.adminTileReady = '1';
+      placeholder.replaceWith(section);
+    }
+
+    overlay?.remove();
+    adminEditorState = null;
+  };
+
+  const openAdminEditor = section => {
+    if (adminEditorState) closeAdminEditor(false);
+
+    const parent = section.parentNode;
+    if (!parent) return;
+
+    const placeholder = document.createComment('admin-editor-placeholder');
+    parent.insertBefore(placeholder, section);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-editor-backdrop';
+
+    const panel = document.createElement('div');
+    panel.className = 'admin-editor-panel';
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'admin-editor-close';
+    close.textContent = '×';
+    close.setAttribute('data-admin-editor-close', '');
+
+    section.classList.remove('is-collapsed');
+    section.classList.add('admin-editor-open');
+    section.querySelectorAll('[hidden]').forEach(el => {
+      if (el.id === 'adForm') el.hidden = false;
+    });
+
+    panel.appendChild(close);
+    panel.appendChild(section);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    adminEditorState = {section, placeholder, overlay};
+  };
+
+  const decorateAdminTiles = () => {
+    const root = document.querySelector('#adminContent');
+    if (!root) return;
+
+    const sections = root.querySelectorAll(
+      ':scope > .admin-section, ' +
+      ':scope > .admin-grid > .admin-section, ' +
+      ':scope > .admin-card, ' +
+      ':scope > .admin-grid > .admin-card'
+    );
+
+    sections.forEach(section => {
+      if (
+        section.classList.contains('admin-top') ||
+        section.dataset.adminTileReady === '1'
+      ) return;
+
+      section.dataset.adminTileReady = '1';
+      section.classList.add('admin-dashboard-tile');
+      section.classList.add('is-collapsed');
+
+      section.addEventListener('click', event => {
+        if (
+          event.target.closest(
+            'button,input,textarea,select,label,a,form,[data-admin-toggle]'
+          )
+        ) return;
+
+        if (section.classList.contains('is-collapsed')) {
+          openAdminEditor(section);
+        }
+      });
+    });
+  };
+
+  const scheduleDecorate = () => {
+    clearTimeout(decorateTimer);
+    decorateTimer = setTimeout(() => {
+      if (
+        adminEditorState &&
+        !adminEditorState.placeholder?.isConnected
+      ) {
+        closeAdminEditor(false);
+      }
+      decorateAdminTiles();
+    }, 0);
+  };
+
+  document.addEventListener('click', event => {
+    const closeButton = event.target.closest('[data-admin-editor-close]');
+    if (closeButton) {
+      closeAdminEditor(true);
+      return;
+    }
+
+    if (
+      event.target.classList.contains('admin-editor-backdrop') &&
+      adminEditorState
+    ) {
+      closeAdminEditor(true);
+    }
+  });
+
+  const observer = new MutationObserver(scheduleDecorate);
+
+  const startObserver = () => {
+    const root = document.querySelector('#adminContent');
+    if (!root) return;
+    observer.disconnect();
+    observer.observe(root, {childList:true, subtree:true});
+    decorateAdminTiles();
+  };
+
+  startObserver();
+  window.addEventListener('hashchange', scheduleDecorate);
+  window.addEventListener('load', startObserver);
+}
+
+/* CATEGORY MANAGEMENT TILE DECORATION */
+if (!window.__categoryManagementTileReady) {
+  window.__categoryManagementTileReady = true;
+
+  const decorateCategoryManagementTile = () => {
+    const section = document.querySelector('#categoryForm')?.closest('.admin-section');
+    if (!section) return;
+
+    section.classList.add('admin-card', 'admin-dashboard-tile');
+
+    if (!section.classList.contains('admin-editor-open')) {
+      section.classList.add('is-collapsed');
+    }
+
+    const heading = section.querySelector('h3');
+    if (heading && !section.querySelector('[data-admin-toggle]')) {
+}
+  };
+
+  const observer = new MutationObserver(decorateCategoryManagementTile);
+  observer.observe(document.body, {childList:true, subtree:true});
+  decorateCategoryManagementTile();
+}
+
+/* STEP 1 — CUSTOMER DASHBOARD */
+window.accountOrderFilter = '';
+
+function getCustomerOrders() {
+  return currentUser
+    ? orders.filter(order => String(order.userId) === String(currentUser.id))
+    : [];
+}
+
+function getAccountStatusOrders(statuses) {
+  const mine = getCustomerOrders();
+  return mine.filter(order => statuses.includes(order.status));
+}
+
+function getRecentlyViewedProducts() {
+  const ids = (read('laiba_recently_viewed', []) || []).map(Number);
+  return ids
+    .map(id => products.find(product => Number(product.id) === id))
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function rememberRecentlyViewed(productId) {
+  const id = Number(productId);
+  if (!Number.isFinite(id)) return;
+
+  const ids = (read('laiba_recently_viewed', []) || [])
+    .map(Number)
+    .filter(item => item !== id);
+
+  ids.unshift(id);
+  write('laiba_recently_viewed', ids.slice(0, 10));
+}
+
+function accountStatusCards() {
+  const mine = getCustomerOrders();
+
+  const toShip = mine.filter(order =>
+    ['pending','confirmed'].includes(order.status)
+  ).length;
+
+  const toReceive = mine.filter(order =>
+    order.status === 'shipped'
+  ).length;
+
+  const toReview = mine.filter(order =>
+    order.status === 'delivered' &&
+    order.items?.some(item =>
+      !reviews.some(review =>
+        review.orderId === order.id &&
+        review.productId === Number(item.id)
+      )
+    )
+  ).length;
+
+  const returned = mine.filter(order =>
+    ['returned','return_requested'].includes(order.status)
+  ).length;
+
+  const cancelled = mine.filter(order =>
+    ['cancelled','cancellation','cancellation_requested'].includes(order.status)
+  ).length;
+
+  return [
+    {key:'all',label:'My Orders',count:mine.length},
+    {key:'to-ship',label:'To Ship',count:toShip},
+    {key:'to-receive',label:'To Receive',count:toReceive},
+    {key:'to-review',label:'To Review',count:toReview},
+    {key:'return',label:'Return',count:returned},
+    {key:'cancelled',label:'Cancellation',count:cancelled}
+  ];
+}
+
+function renderCustomerDashboard() {
+  if (!currentUser) return renderAuth('login');
+
+  const cards = accountStatusCards();
+  const recent = getRecentlyViewedProducts();
+
+  $('#authContent').innerHTML = `
+    <div class="customer-dashboard">
+
+      <section class="customer-profile-card">
+        <div class="customer-profile-avatar">
+          ${escapeHtml((currentUser.name || 'U').charAt(0).toUpperCase())}
+        </div>
+        <div>
+          <p class="eyebrow">MY PROFILE</p>
+          <h2>${escapeHtml(currentUser.name || 'Customer')}</h2>
+          <p>${escapeHtml(currentUser.email || currentUser.phone || '')}</p>
+          <small>${escapeHtml(currentUser.phone || '')}${currentUser.district ? ` · ${escapeHtml(currentUser.district)}` : ''}</small>
+        </div>
+      </section>
+
+      <div class="customer-dashboard-heading">
+        <div>
+          <p class="eyebrow">MY DASHBOARD</p>
+          <h3>আপনার shopping overview</h3>
+        </div>
+      </div>
+
+      <div class="customer-status-rail" id="customerStatusRail">
+        ${cards.map(card => `
+          <button
+            type="button"
+            class="customer-status-card"
+            data-account-filter="${escapeHtml(card.key)}"
+          >
+            <strong>${card.count}</strong>
+            <span>${escapeHtml(card.label)}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <section class="recently-viewed-section">
+        <div class="customer-dashboard-heading">
+          <div>
+            <p class="eyebrow">RECENTLY VIEWED</p>
+            <h3>আপনি যেগুলো দেখেছেন</h3>
+          </div>
+        </div>
+
+        <div class="recently-viewed-rail" id="recentlyViewedRail">
+          ${recent.length
+            ? recent.map(product => `
+              <article class="recently-viewed-card">
+                <div class="recently-viewed-image">
+                  <img
+                    src="${escapeHtml(primaryProductImage(product))}"
+                    alt="${escapeHtml(product.name)}"
+                    loading="lazy"
+                  >
+                </div>
+                <div class="recently-viewed-info">
+                  <h4>${escapeHtml(product.name)}</h4>
+                  <strong>${money(product.price)}</strong>
+                </div>
+              </article>
+            `).join('')
+            : '<div class="empty-state">আপনি এখনও কোনো product দেখেননি।</div>'
+          }
+        </div>
+      </section>
+
+      <div class="customer-dashboard-actions">
+        <button class="primary-button" data-action="my-orders">আমার অর্ডার</button>
+        ${currentUser.role === 'admin'
+          ? '<button class="dark-button" data-action="open-admin">অ্যাডমিন প্যানেল</button>'
+          : ''}
+        <button class="outline-button" data-action="logout">লগআউট</button>
+      </div>
+    </div>
+  `;
+
+  setupCustomerDashboardSlider();
+}
+
+function setupCustomerDashboardSlider() {
+  const rails = [
+    document.querySelector('#customerStatusRail'),
+    document.querySelector('#recentlyViewedRail')
+  ].filter(Boolean);
+
+  rails.forEach(rail => {
+    if (rail.children.length < 2 || rail.dataset.sliderReady === '1') return;
+
+    rail.dataset.sliderReady = '1';
+    let direction = 1;
+
+    rail.addEventListener('pointerdown', () => {
+      rail.dataset.manual = '1';
+      clearInterval(rail._autoSlide);
+    });
+
+    rail.addEventListener('pointerup', () => {
+      rail.dataset.manual = '0';
+      startAutoSlide(rail);
+    });
+
+    const startAutoSlide = target => {
+      clearInterval(target._autoSlide);
+
+      target._autoSlide = setInterval(() => {
+        if (target.dataset.manual === '1') return;
+
+        const step = target.clientWidth * 0.86;
+        const max = target.scrollWidth - target.clientWidth;
+
+        if (target.scrollLeft >= max - 5) direction = -1;
+        if (target.scrollLeft <= 5) direction = 1;
+
+        target.scrollBy({
+          left: direction * step,
+          behavior: 'smooth'
+        });
+      }, 3000);
+    };
+
+    startAutoSlide(rail);
+  });
+}
+
+/* Replace old logged-in account screen */
+const originalRenderAuth = renderAuth;
+renderAuth = function(mode = 'login') {
+  if (currentUser) {
+    renderCustomerDashboard();
+    return;
+  }
+  originalRenderAuth(mode);
+};
+
+/* Dashboard status filters */
+document.addEventListener('click', event => {
+  const filterButton = event.target.closest('[data-account-filter]');
+  if (!filterButton || !currentUser) return;
+
+  const filter = filterButton.dataset.accountFilter;
+  accountOrderFilter = filter === 'all' ? '' : filter;
+  renderOrders();
+  openModal('ordersModal');
+});
+
+/* Track products viewed from any product card */
+document.addEventListener('click', event => {
+  const card = event.target.closest('.product-card');
+  if (!card) return;
+
+  const idSource =
+    card.querySelector('[data-add]')?.dataset.add ||
+    card.querySelector('[data-buy-now]')?.dataset.buyNow;
+
+  if (idSource) rememberRecentlyViewedProduct(idSource);
+});
+
+if (!window.__myOrdersBackBound) {
+  window.__myOrdersBackBound = true;
+
+  document.addEventListener('click', event => {
+    const back = event.target.closest('[data-action="my-orders-back"]');
+    if (!back) return;
+
+    accountOrderFilter = '';
+    closeModal('ordersModal');
+    renderCustomerDashboard();
+  });
+}
+
+/* STEP 4 — CUSTOMER ↔ ADMIN MESSAGING */
+async function getAdminProfiles() {
+  const client = window.laibaSupabase;
+  if (!client) return [];
+
+  const result = await client.rpc('get_admin_contact');
+
+  if (result.error) {
+    console.error('Admin contact load failed:', result.error);
+    return [];
+  }
+
+  return (result.data || []).map(admin => ({
+    ...admin,
+    name: admin.name?.trim() || 'Ziyana Shop Support'
+  }));
+}
+
+async function getMessagingUserId() {
+  const client = window.laibaSupabase;
+  if (!client) return null;
+
+  const result = await client.auth.getUser();
+  return result.data?.user?.id || null;
+}
+
+async function loadMessagesForUser(otherUserId) {
+  const client = window.laibaSupabase;
+  const userId = await getMessagingUserId();
+  if (!client || !userId || !otherUserId) return [];
+
+  const result = await client
+    .from('messages')
+    .select('*')
+    .or(
+      `and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`
+    )
+    .order('created_at', {ascending:true});
+
+  if (result.error) {
+    showToast(result.error.message || 'Message load হয়নি');
+    return [];
+  }
+
+  return result.data || [];
+}
+
+async function sendMessageToAdmin(body) {
+  const client = window.laibaSupabase;
+  const userId = await getMessagingUserId();
+  if (!client || !userId) return showToast('Message দিতে Supabase email login প্রয়োজন');
+
+  const admins = await getAdminProfiles();
+  const admin = admins[0];
+
+  if (!admin) return showToast('Admin account পাওয়া যায়নি');
+
+  const text = String(body || '').trim();
+  if (!text) return showToast('Message লিখুন');
+
+  const result = await client.from('messages').insert({
+    sender_id: userId,
+    recipient_id: admin.id,
+    body:text
+  });
+
+  if (result.error) return showToast(result.error.message || 'Message পাঠানো যায়নি');
+
+  showToast('Admin-কে message পাঠানো হয়েছে');
+  await renderCustomerMessages(admin);
+}
+
+async function renderCustomerMessages(admin = null) {
+  const box = document.querySelector('#customerMessageBox');
+  if (!box) return;
+
+  const admins = admin ? [admin] : await getAdminProfiles();
+  const selectedAdmin = admins[0];
+
+  if (!selectedAdmin) {
+    box.innerHTML = '<div class="empty-state">Admin contact পাওয়া যায়নি।</div>';
+    return;
+  }
+
+  const messages = await loadMessagesForUser(selectedAdmin.id);
+
+  await window.laibaSupabase
+    ?.rpc('mark_messages_read', {p_sender_id:selectedAdmin.id});
+
+  box.innerHTML = `
+    <div class="customer-message-header">
+      <div>
+        <p class="eyebrow">ADMIN SUPPORT</p>
+        <h3>${escapeHtml(selectedAdmin.name || 'Admin')}</h3>
+      </div>
+      <span>${messages.filter(message => message.sender_id !== currentUser.id && !message.read_at).length ? 'New' : ''}</span>
+    </div>
+
+    <div class="customer-message-thread" id="customerMessageThread">
+      ${messages.length
+        ? messages.map(message => `
+          <div class="customer-message ${message.sender_id === currentUser.id ? 'mine' : 'theirs'}">
+            <p>${escapeHtml(message.body)}</p>
+            <small>${new Date(message.created_at).toLocaleString('bn-BD')}</small>
+          </div>
+        `).join('')
+        : '<div class="empty-state">Admin-কে আপনার প্রশ্ন লিখে পাঠান।</div>'
+      }
+    </div>
+
+    <form id="customerMessageForm" class="customer-message-form">
+      <textarea name="message" rows="2" maxlength="4000" placeholder="Admin-কে message লিখুন..." required></textarea>
+      <button class="primary-button" type="submit">Send message</button>
+    </form>
+  `;
+}
+
+async function renderAdminMessages() {
+  const box = document.querySelector('#adminMessageBox');
+  if (!box) return;
+
+  const client = window.laibaSupabase;
+  if (!client || !currentUser?.id) {
+    box.innerHTML = '<div class="empty-state">Supabase admin login প্রয়োজন।</div>';
+    return;
+  }
+
+  const result = await client
+    .from('messages')
+    .select('sender_id,recipient_id,body,created_at,read_at')
+    .order('created_at', {ascending:false});
+
+  if (result.error) {
+    box.innerHTML = `<div class="empty-state">${escapeHtml(result.error.message || 'Messages load হয়নি')}</div>`;
+    return;
+  }
+
+  const rows = result.data || [];
+  const customerIds = [...new Set(
+    rows
+      .map(message => message.sender_id === currentUser.id ? message.recipient_id : message.sender_id)
+      .filter(Boolean)
+  )];
+
+  const profiles = customerIds.length
+    ? (await client.from('profiles').select('id,name,phone').in('id', customerIds)).data || []
+    : [];
+
+  const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
+
+  const conversations = customerIds.map(customerId => {
+    const customerRows = rows
+      .filter(message =>
+        (message.sender_id === currentUser.id && message.recipient_id === customerId) ||
+        (message.sender_id === customerId && message.recipient_id === currentUser.id)
+      )
+      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const last = customerRows[customerRows.length - 1];
+    const unread = customerRows.filter(message =>
+      message.recipient_id === currentUser.id && !message.read_at
+    ).length;
+
+    return {customerId, profile:profileMap.get(customerId), last, unread};
+  }).sort((a,b) =>
+    new Date(b.last?.created_at || 0) - new Date(a.last?.created_at || 0)
+  );
+
+  box.innerHTML = conversations.length
+    ? conversations.map(item => `
+      <button
+        type="button"
+        class="admin-message-customer"
+        data-admin-message-customer="${escapeHtml(item.customerId)}"
+      >
+        <span>
+          <b>${escapeHtml(item.profile?.name || 'Customer')}</b>
+          <small>${escapeHtml(item.profile?.phone || item.profile?.email || '')}</small>
+        </span>
+        <span>
+          ${item.unread ? `<strong>${item.unread}</strong>` : ''}
+          <small>${escapeHtml(item.last?.body || '')}</small>
+        </span>
+      </button>
+    `).join('')
+    : '<div class="empty-state">এখনও কোনো customer message নেই।</div>';
+}
+
+async function openAdminConversation(customerId) {
+  const client = window.laibaSupabase;
+  if (!client || !customerId || !currentUser?.id) return;
+
+  const profiles = await client
+    .from('profiles')
+    .select('id,name,phone')
+    .eq('id', customerId)
+    .limit(1);
+
+  const customer = profiles.data?.[0];
+  if (!customer) return showToast('Customer পাওয়া যায়নি');
+
+  const messages = await loadMessagesForUser(customerId);
+
+  const unread = messages.filter(message =>
+    message.recipient_id === currentUser.id && !message.read_at
+  );
+
+  if (unread.length) {
+    await client
+      .from('messages')
+      .update({read_at:new Date().toISOString()})
+      .eq('sender_id', customerId)
+      .eq('recipient_id', currentUser.id)
+      .is('read_at', null);
+  }
+
+  const content = `
+    <div class="panel-heading">
+      <p class="eyebrow">CUSTOMER MESSAGE</p>
+      <h2>${escapeHtml(customer.name || 'Customer')}</h2>
+      <p>${escapeHtml(customer.phone || customer.email || '')}</p>
+    </div>
+
+    <div class="customer-message-thread admin-thread">
+      ${messages.length
+        ? messages.map(message => `
+          <div class="customer-message ${message.sender_id === currentUser.id ? 'mine' : 'theirs'}">
+            <p>${escapeHtml(message.body)}</p>
+            <small>${new Date(message.created_at).toLocaleString('bn-BD')}</small>
+          </div>
+        `).join('')
+        : '<div class="empty-state">কোনো message নেই।</div>'
+      }
+    </div>
+
+    <form id="adminMessageReplyForm" class="customer-message-form">
+      <input type="hidden" name="recipientId" value="${escapeHtml(customerId)}">
+      <textarea name="message" rows="2" maxlength="4000" placeholder="Customer-কে reply লিখুন..." required></textarea>
+      <button class="primary-button" type="submit">Reply পাঠান</button>
+    </form>
+  `;
+
+  $('#ordersContent').innerHTML = content;
+  openModal('ordersModal');
+}
+
+async function sendAdminMessage(form) {
+  const client = window.laibaSupabase;
+  if (!client || !currentUser?.id) return showToast('Supabase admin login প্রয়োজন');
+
+  const data = Object.fromEntries(new FormData(form));
+  const recipientId = String(data.recipientId || '').trim();
+  const body = String(data.message || '').trim();
+
+  if (!recipientId || !body) return showToast('Message লিখুন');
+
+  const profile = await client
+    .from('profiles')
+    .select('role')
+    .eq('id', recipientId)
+    .limit(1);
+
+  if (profile.data?.[0]?.role !== 'customer') {
+    return showToast('শুধু customer-কে message পাঠানো যাবে');
+  }
+
+  const result = await client.from('messages').insert({
+    sender_id: currentUser.id,
+    recipient_id: recipientId,
+    body
+  });
+
+  if (result.error) return showToast(result.error.message || 'Reply পাঠানো যায়নি');
+
+  showToast('Customer-কে reply পাঠানো হয়েছে');
+  await openAdminConversation(recipientId);
+}
+
+document.addEventListener('submit', event => {
+  if (event.target.id === 'customerMessageForm') {
+    event.preventDefault();
+    void sendMessageToAdmin(new FormData(event.target).get('message'));
+  }
+
+  if (event.target.id === 'adminMessageReplyForm') {
+    event.preventDefault();
+    void sendAdminMessage(event.target);
+  }
+});
+
+document.addEventListener('click', event => {
+  const customerMessageCard = event.target.closest('[data-action="customer-messages"]');
+  if (customerMessageCard) {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = document.querySelector('#customerMessageBox');
+    if (target) {
+      target.scrollIntoView({behavior:'smooth', block:'center'});
+      void renderCustomerMessages();
+    }
+    return;
+  }
+
+  const adminCustomer = event.target.closest('[data-admin-message-customer]');
+  if (adminCustomer) {
+    event.preventDefault();
+    event.stopPropagation();
+    void openAdminConversation(adminCustomer.dataset.adminMessageCustomer);
+  }
+});
+
+/* STEP 4 — MESSAGE CARDS + UI INTEGRATION */
+async function refreshCustomerMessageSummary() {
+  if (!currentUser || currentUser.role === 'admin') return;
+
+  const card = document.querySelector('[data-action="customer-messages"]');
+  if (!card) return;
+
+  const admins = await getAdminProfiles();
+  const admin = admins[0];
+  if (!admin) return;
+
+  const messages = await loadMessagesForUser(admin.id);
+  const unread = messages.filter(message =>
+    message.recipient_id === currentUser.id && !message.read_at
+  ).length;
+
+  const count = card.querySelector('[data-message-count]');
+  if (count) {
+    count.textContent = unread ? `${unread} new` : 'No new';
+  }
+}
+
+function injectCustomerMessageCard() {
+  if (!currentUser || currentUser.role === 'admin') return;
+
+  const dashboard = document.querySelector('.customer-dashboard');
+  if (!dashboard) return;
+
+  if (dashboard.querySelector('[data-action="customer-messages"]')) return;
+
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'customer-message-dashboard-card';
+  card.setAttribute('data-action', 'customer-messages');
+
+  card.innerHTML = `
+    <span class="customer-message-icon">✉</span>
+    <span class="customer-message-copy">
+      <small>ADMIN SUPPORT</small>
+      <strong>Admin Message</strong>
+      <em data-message-count>No new</em>
+    </span>
+    <span class="customer-message-arrow">→</span>
+  `;
+
+  const statusRail = dashboard.querySelector('#customerStatusRail');
+  if (statusRail?.parentNode) {
+    statusRail.parentNode.insertBefore(card, statusRail.nextSibling);
+  } else {
+    dashboard.prepend(card);
+  }
+
+  void refreshCustomerMessageSummary();
+}
+
+if (!window.__customerMessageDashboardWrapped) {
+  window.__customerMessageDashboardWrapped = true;
+
+  const baseRenderCustomerDashboard = renderCustomerDashboard;
+
+  renderCustomerDashboard = function() {
+    baseRenderCustomerDashboard();
+    requestAnimationFrame(() => injectCustomerMessageCard());
+  };
+}
+
+async function openCustomerMessagePanel() {
+  if (!currentUser) return openAuth('login');
+
+  const admins = await getAdminProfiles();
+  const admin = admins[0];
+
+  if (!admin) {
+    return showToast('Admin contact পাওয়া যায়নি');
+  }
+
+  $('#ordersContent').innerHTML = `
+    <div class="panel-heading">
+      <p class="eyebrow">ADMIN SUPPORT</p>
+      <h2>${escapeHtml(admin.name || 'Ziyana Shop Support')}</h2>
+      <p>আপনার প্রশ্ন বা সমস্যার message এখানে পাঠাতে পারবেন।</p>
+    </div>
+
+    <div id="customerMessageBox" class="customer-message-panel">
+      <div class="empty-state">Messages loading...</div>
+    </div>
+  `;
+
+  openModal('ordersModal');
+  await renderCustomerMessages(admin);
+}
+
+async function openAdminMessagesPanel() {
+  const unread = document.querySelector('[data-admin-message-unread]')?.textContent || '0';
+
+  $('#ordersContent').innerHTML = `
+    <div class="panel-heading">
+      <p class="eyebrow">MESSAGES</p>
+      <h2>Customer messages</h2>
+      <p>${escapeHtml(unread)} unread message${String(unread) === '1' ? '' : 's'}.</p>
+    </div>
+
+    <div class="admin-message-inbox" id="adminMessageBox">
+      <div class="empty-state">Messages loading...</div>
+    </div>
+  `;
+
+  openModal('ordersModal');
+  await renderAdminMessages();
+}
+
+async function injectAdminMessageCard() {
+  const root = document.querySelector('#adminContent');
+  if (!root || root.querySelector('[data-admin-message-card]')) return;
+
+  const client = window.laibaSupabase;
+  if (!client || !currentUser?.id || currentUser.role !== 'admin') return;
+
+  const result = await client
+    .from('messages')
+    .select('id,sender_id,recipient_id,read_at')
+    .eq('recipient_id', currentUser.id)
+    .is('read_at', null);
+
+  const unread = result.error ? 0 : (result.data || []).length;
+
+  const section = document.createElement('section');
+  section.className = 'admin-section admin-message-dashboard-card admin-dashboard-tile is-collapsed';
+  section.dataset.adminMessageCard = '1';
+  section.dataset.adminTileReady = '1';
+
+  section.innerHTML = `
+    <h3>Messages</h3>
+    <p class="admin-message-card-subtitle">Customer support inbox</p>
+    <span class="admin-message-unread" data-admin-message-unread>${unread}</span>
+  `;
+
+  root.appendChild(section);
+}
+
+if (!window.__adminMessageDashboardWrapped) {
+  window.__adminMessageDashboardWrapped = true;
+
+  const baseRenderAdmin = renderAdmin;
+
+  renderAdmin = function() {
+    baseRenderAdmin();
+    requestAnimationFrame(() => {
+      void injectAdminMessageCard();
+    });
+  };
+}
+
+/* Customer message card click */
+document.addEventListener('click', event => {
+  const card = event.target.closest('[data-action="customer-messages"]');
+  if (!card) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void openCustomerMessagePanel();
+}, true);
+
+/* Admin messages card click */
+document.addEventListener('click', event => {
+  const card = event.target.closest('[data-admin-message-card]');
+  if (!card || event.target.closest('button,input,textarea,select,a')) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void openAdminMessagesPanel();
+}, true);
+
+/* Refresh message badges */
+if (!window.__messageBadgeRefreshStarted) {
+  window.__messageBadgeRefreshStarted = true;
+
+  setInterval(() => {
+    if (!currentUser) return;
+
+    if (currentUser.role === 'admin') {
+      void injectAdminMessageCard();
+    } else {
+      void refreshCustomerMessageSummary();
+    }
+  }, 5000);
+}
+
+/* STEP 5 — INCOMPLETE ORDERS */
+function isIncompleteOrder(order) {
+  return !['delivered', 'cancelled', 'returned'].includes(order.status);
+}
+
+function getIncompleteOrders(list = orders) {
+  return (list || []).filter(isIncompleteOrder);
+}
+
+function injectCustomerIncompleteOrderCard() {
+  if (!currentUser || currentUser.role === 'admin') return;
+
+  const dashboard = document.querySelector('.customer-dashboard');
+  if (!dashboard || dashboard.querySelector('[data-account-filter="incomplete"]')) return;
+
+  const count = getIncompleteOrders(getCustomerOrders()).length;
+  const rail = dashboard.querySelector('#customerStatusRail');
+  if (!rail) return;
+
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'customer-status-card customer-incomplete-card';
+  card.dataset.accountFilter = 'incomplete';
+
+  card.innerHTML = `
+    <strong>${count}</strong>
+    <span>Incomplete Orders</span>
+  `;
+
+  rail.prepend(card);
+}
+
+function injectAdminIncompleteOrderCard() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+
+  const root = document.querySelector('#adminContent');
+  if (!root || root.querySelector('[data-admin-incomplete-orders]')) return;
+
+  const count = getIncompleteOrders(orders).length;
+
+  const card = document.createElement('section');
+  card.className = 'admin-section admin-dashboard-tile is-collapsed';
+  card.dataset.adminIncompleteOrders = '1';
+  card.dataset.adminTileReady = '1';
+
+  card.innerHTML = `
+    <h3>Incomplete Orders</h3>
+    <p class="admin-message-card-subtitle">
+      Pending · Confirmed · Shipped
+    </p>
+    <span class="admin-message-unread admin-incomplete-count">
+      ${count}
+    </span>
+  `;
+
+  root.appendChild(card);
+}
+
+async function openAdminIncompleteOrders() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+
+  const incomplete = getIncompleteOrders(orders).slice().reverse();
+
+  $('#ordersContent').innerHTML = `
+    <div class="panel-heading">
+      <p class="eyebrow">ORDER CONTROL</p>
+      <h2>Incomplete Orders</h2>
+      <p>${incomplete.length}টি incomplete order বর্তমানে চলছে।</p>
+    </div>
+
+    <div class="order-list">
+      ${
+        incomplete.length
+          ? incomplete.map(order => `
+              <article class="order-card">
+                <div>
+                  <b>#${escapeHtml(order.id)} · ${escapeHtml(order.customer?.name || 'Customer')}</b>
+                  <small>${escapeHtml(order.createdAt || '')}</small>
+                </div>
+
+                <span class="status ${escapeHtml(order.status || '')}">
+                  ${escapeHtml(order.statusLabel || order.status || '')}
+                </span>
+
+                <strong>${money(order.total)}</strong>
+
+                <p>
+                  ${(order.items || []).map(item =>
+                    `${escapeHtml(item.name)} × ${item.quantity}`
+                  ).join(', ')}
+                </p>
+
+                <button
+                  type="button"
+                  class="outline-button"
+                  data-view-order="${escapeHtml(order.id)}"
+                >Full details</button>
+
+                <select data-order-status="${escapeHtml(order.id)}">
+                  <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                  <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                  <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                  <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                  <option value="returned" ${order.status === 'returned' ? 'selected' : ''}>Returned</option>
+                </select>
+              </article>
+            `).join('')
+          : '<div class="empty-state">কোনো incomplete order নেই।</div>'
+      }
+    </div>
+  `;
+
+  openModal('ordersModal');
+}
+
+/* Keep the customer incomplete card after every dashboard render */
+if (!window.__customerIncompleteDashboardWrapped) {
+  window.__customerIncompleteDashboardWrapped = true;
+
+  const currentCustomerDashboardRenderer = renderCustomerDashboard;
+
+  renderCustomerDashboard = function() {
+    currentCustomerDashboardRenderer();
+    requestAnimationFrame(() => {
+      injectCustomerIncompleteOrderCard();
+    });
+  };
+}
+
+/* Keep the admin incomplete card after every admin render */
+if (!window.__adminIncompleteDashboardWrapped) {
+  window.__adminIncompleteDashboardWrapped = true;
+
+  const currentAdminRenderer = renderAdmin;
+
+  renderAdmin = function() {
+    currentAdminRenderer();
+    requestAnimationFrame(() => {
+      injectAdminIncompleteOrderCard();
+    });
+  };
+}
+
+/* Open customer incomplete orders */
+document.addEventListener('click', event => {
+  const card = event.target.closest('[data-account-filter="incomplete"]');
+  if (!card || !currentUser || currentUser.role === 'admin') return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  accountOrderFilter = 'incomplete';
+  renderOrders();
+  openModal('ordersModal');
+}, true);
+
+/* Open admin incomplete orders */
+document.addEventListener('click', event => {
+  const card = event.target.closest('[data-admin-incomplete-orders]');
+  if (!card || event.target.closest('button,input,textarea,select,a')) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void openAdminIncompleteOrders();
+}, true);
+
+/* Refresh incomplete counts */
+if (!window.__incompleteOrderRefreshStarted) {
+  window.__incompleteOrderRefreshStarted = true;
+
+  setInterval(() => {
+    if (!currentUser) return;
+
+    if (currentUser.role === 'admin') {
+      injectAdminIncompleteOrderCard();
+    } else {
+      injectCustomerIncompleteOrderCard();
+    }
+  }, 3000);
+}
+
+
+/* TRANSACTIONAL INVENTORY STATUS UPDATE */
+async function handleAdminOrderStatusChange(order, select) {
+  const client = window.laibaSupabase;
+
+  if (!client || currentUser?.role !== 'admin') {
+    if (select) select.value = order?.status || 'pending';
+    return showToast('Admin Supabase session প্রয়োজন');
+  }
+
+  const cloudId = String(order.cloudId || '');
+  if (!cloudId.includes('-')) {
+    if (select) select.value = order.status || 'pending';
+    return showToast('Order এখনো cloud-এ sync হয়নি');
+  }
+
+  const previousStatus = order.status;
+  const nextStatus = select.value;
+
+  if (previousStatus === nextStatus) return;
+
+  select.disabled = true;
+
+  const result = await client.rpc('admin_update_order_status', {
+    p_order_id:cloudId,
+    p_new_status:nextStatus
+  });
+
+  select.disabled = false;
+
+  if (result.error) {
+    select.value = previousStatus;
+    return showToast(result.error.message || 'Order status update হয়নি');
+  }
+
+  const updated = result.data || {};
+
+  order.status = updated.status || nextStatus;
+  order.statusLabel = updated.status_label || order.statusLabel;
+  order.stockDeducted = Boolean(updated.stock_deducted);
+  order.stockRestored = Boolean(updated.stock_restored);
+
+  write('laiba_orders', orders);
+
+  /* Refresh authoritative cloud stock/settings + orders. */
+  try {
+    await loadCloudState();
+  } catch (error) {
+    console.warn('Cloud inventory refresh failed:', error);
+  }
+
+  try {
+    await loadCloudOrders();
+  } catch (error) {
+    console.warn('Cloud order refresh failed:', error);
+  }
+
+  renderGifts();
+  renderProducts();
+  renderAdmin();
+
+  showToast('Order status ও stock update হয়েছে');
+}
+
+/* FINAL HEADER ORDERS HANDLER */
+(function fixHeaderOrdersButton() {
+  const button = document.querySelector('#ordersButton');
+  if (!button) return;
+
+  const freshButton = button.cloneNode(true);
+  button.replaceWith(freshButton);
+
+  freshButton.addEventListener('click', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!currentUser) {
+      openAuth('login');
+      return;
+    }
+
+    accountOrderFilter = '';
+
+    const list = currentUser.role === 'admin'
+      ? orders
+      : getCustomerOrders();
+
+    const title = currentUser.role === 'admin'
+      ? 'Orders'
+      : 'My Orders';
+
+    $('#ordersContent').innerHTML = `
+      <div class="panel-heading">
+        <p class="eyebrow">${currentUser.role === 'admin' ? 'ORDER CONTROL' : 'MY ORDERS'}</p>
+        <h2>${title}</h2>
+        <p>${list.length}টি order পাওয়া গেছে।</p>
+      </div>
+
+      ${
+        list.length
+          ? `<div class="order-list">
+              ${list.slice().reverse().map(order => `
+                <article class="order-card">
+                  <div>
+                    <b>Order #${escapeHtml(String(order.id))}</b>
+                    <small>${escapeHtml(order.createdAt || '')}</small>
+                  </div>
+
+                  <span class="status ${escapeHtml(order.status || '')}">
+                    ${escapeHtml(order.statusLabel || order.status || '')}
+                  </span>
+
+                  <strong>${money(order.total)}</strong>
+
+                  <p>
+                    ${(order.items || []).map(item =>
+                      `${escapeHtml(item.name)} × ${item.quantity}`
+                    ).join(', ')}
+                  </p>
+
+                  ${
+                    currentUser.role === 'admin'
+                      ? `
+                        <button
+                          type="button"
+                          class="outline-button"
+                          data-view-order="${escapeHtml(String(order.id))}"
+                        >Full details</button>
+
+                        <select data-order-status="${escapeHtml(String(order.id))}">
+                          <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                          <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                          <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                          <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                          <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                          <option value="returned" ${order.status === 'returned' ? 'selected' : ''}>Returned</option>
+                        </select>
+                      `
+                      : ''
+                  }
+
+                  ${
+                    order.trackingUrl
+                      ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>`
+                      : ''
+                  }
+                </article>
+              `).join('')}
+            </div>`
+          : '<div class="empty-state">এখনও কোনো order নেই।</div>'
+      }
+    `;
+
+    openModal('ordersModal');
+  });
+})();
+
+/* HOME INITIAL BOOT */
+(function initHomePage() {
+  if (window.__ziyanaHomeBooted) return;
+  window.__ziyanaHomeBooted = true;
+
+  const renderHome = () => {
+    try { renderHero(); } catch (error) { console.warn('Hero render failed:', error); }
+    try { renderCategories(); } catch (error) { console.warn('Category render failed:', error); }
+    try { renderCampaignBanner(); } catch (error) { console.warn('Campaign banner render failed:', error); }
+    try { renderAds(); } catch (error) { console.warn('Campaign cards render failed:', error); }
+    try { renderGifts(); } catch (error) { console.warn('Gift render failed:', error); }
+    try { renderProducts(); } catch (error) { console.warn('Product sections render failed:', error); }
+    try { updateCart(); } catch (error) { console.warn('Cart render failed:', error); }
+  };
+
+  renderHome();
+
+  if (window.laibaSupabase) {
+    setTimeout(() => {
+      void loadCloudState()
+        .then(() => renderHome())
+        .catch(error => console.warn('Initial cloud state load failed:', error));
+    }, 0);
+  }
+})();
+
+
+/* FINAL SUPABASE PASSWORD FLOWS */
+(function setupPasswordFlows() {
+  if (window.__ziyanaPasswordFlowsReady) return;
+  window.__ziyanaPasswordFlowsReady = true;
+
+  const client = window.laibaSupabase;
+
+  const resetRedirectUrl = () => {
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    return url.toString();
+  };
+
+  const ensureModal = (id, html) => {
+    let modal = document.querySelector(`#${id}`);
+
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = id;
+      modal.className = 'modal form-modal';
+      modal.hidden = true;
+      modal.innerHTML = html;
+      document.body.appendChild(modal);
+    }
+
+    return modal;
+  };
+
+  const openForgotRecovery = () => {
+    const modal = ensureModal(
+      'passwordRecoveryModal',
+      `
+        <button type="button" class="modal-close" data-password-modal-close>×</button>
+
+        <div class="panel-heading">
+          <p class="eyebrow">PASSWORD RECOVERY</p>
+          <h2>নতুন password সেট করুন</h2>
+          <p>আপনার নতুন password দুবার লিখুন।</p>
+        </div>
+
+        <form id="passwordRecoveryForm" class="stack-form">
+          <input
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            placeholder="নতুন password"
+            required
+          >
+
+          <input
+            name="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            placeholder="নতুন password আবার লিখুন"
+            required
+          >
+
+          <button class="primary-button" type="submit">
+            Password update করুন
+          </button>
+        </form>
+      `
+    );
+
+    const close = modal.querySelector('[data-password-modal-close]');
+    if (close && !close.dataset.bound) {
+      close.dataset.bound = '1';
+      close.addEventListener('click', () => closeModal('passwordRecoveryModal'));
+    }
+
+    const form = modal.querySelector('#passwordRecoveryForm');
+
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = '1';
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        if (!client) {
+          return showToast('Supabase connection পাওয়া যায়নি');
+        }
+
+        const data = Object.fromEntries(new FormData(form));
+        const password = String(data.password || '');
+        const confirmPassword = String(data.confirmPassword || '');
+
+        if (password.length < 6) {
+          return showToast('Password কমপক্ষে 6 characters হতে হবে');
+        }
+
+        if (password !== confirmPassword) {
+          return showToast('দুইটি password একই নয়');
+        }
+
+        const button = form.querySelector('button[type="submit"]');
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Updating...';
+        }
+
+        try {
+          const {error} = await client.auth.updateUser({
+            password
+          });
+
+          if (error) throw new Error(error.message);
+
+          closeModal('passwordRecoveryModal');
+
+          history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+
+          showToast('Password সফলভাবে পরিবর্তন হয়েছে ✓');
+
+          const sessionResult = await client.auth.getUser();
+          const authUser = sessionResult.data?.user;
+
+          if (authUser) {
+            const profileResult = await client
+              .from('profiles')
+              .select('*')
+              .eq('id', authUser.id)
+              .single();
+
+            const profile = profileResult.data || {};
+
+            currentUser = {
+              id: authUser.id,
+              name: profile.name || authUser.email || '',
+              email: authUser.email || '',
+              phone: profile.phone || '',
+              address: profile.address || '',
+              district: profile.district || '',
+              password: '',
+              role: profile.role || 'customer'
+            };
+
+            write('laiba_current_user', currentUser);
+
+            if (currentUser.role === 'admin') {
+              renderAdmin();
+            } else {
+              renderCustomerDashboard();
+            }
+          }
+
+        } catch (error) {
+          showToast(error.message || 'Password update হয়নি');
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = 'Password update করুন';
+          }
+        }
+      });
+    }
+
+    openModal('passwordRecoveryModal');
+  };
+
+  const sendForgotPasswordEmail = async () => {
+    if (!client) {
+      return showToast('Supabase connection পাওয়া যায়নি');
+    }
+
+    const input = document.querySelector('#authForm [name="identifier"]');
+    const email = String(input?.value || '').trim().toLowerCase();
+
+    if (!email || !email.includes('@')) {
+      return showToast('Forgot Password-এর জন্য আগে email address দিন');
+    }
+
+    try {
+      const {error} = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: resetRedirectUrl()
+      });
+
+      if (error) throw new Error(error.message);
+
+      showToast('Password reset email পাঠানো হয়েছে ✓');
+    } catch (error) {
+      console.error('Password reset email failed:', error);
+      showToast(error.message || 'Reset email পাঠানো যায়নি');
+    }
+  };
+
+  const openChangePassword = () => {
+    if (!currentUser) return openAuth('login');
+
+    const modal = ensureModal(
+      'changePasswordModal',
+      `
+        <button type="button" class="modal-close" data-change-password-close>×</button>
+
+        <div class="panel-heading">
+          <p class="eyebrow">ACCOUNT SECURITY</p>
+          <h2>পাসওয়ার্ড পরিবর্তন</h2>
+          <p>Email, current password এবং নতুন password দিন।</p>
+        </div>
+
+        <form id="changePasswordForm" class="stack-form">
+          <input
+            name="email"
+            type="email"
+            value="${escapeHtml(currentUser.email || '')}"
+            autocomplete="username"
+            placeholder="Email"
+            required
+          >
+
+          <input
+            name="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Current password"
+            required
+          >
+
+          <input
+            name="newPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            placeholder="New password"
+            required
+          >
+
+          <input
+            name="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            placeholder="New password আবার লিখুন"
+            required
+          >
+
+          <button class="primary-button" type="submit">
+            Password পরিবর্তন করুন
+          </button>
+        </form>
+      `
+    );
+
+    const close = modal.querySelector('[data-change-password-close]');
+    if (close && !close.dataset.bound) {
+      close.dataset.bound = '1';
+      close.addEventListener('click', () => closeModal('changePasswordModal'));
+    }
+
+    const form = modal.querySelector('#changePasswordForm');
+
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = '1';
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const data = Object.fromEntries(new FormData(form));
+
+        const email = String(data.email || '').trim().toLowerCase();
+        const currentPassword = String(data.currentPassword || '');
+        const newPassword = String(data.newPassword || '');
+        const confirmPassword = String(data.confirmPassword || '');
+
+        if (!email || !email.includes('@')) {
+          return showToast('সঠিক email দিন');
+        }
+
+        if (!currentPassword) {
+          return showToast('Current password দিন');
+        }
+
+        if (newPassword.length < 6) {
+          return showToast('New password কমপক্ষে 6 characters হতে হবে');
+        }
+
+        if (newPassword !== confirmPassword) {
+          return showToast('New password দুটো একই নয়');
+        }
+
+        if (currentPassword === newPassword) {
+          return showToast('New password আলাদা হতে হবে');
+        }
+
+        if (!client) {
+          return showToast('Supabase connection পাওয়া যায়নি');
+        }
+
+        const button = form.querySelector('button[type="submit"]');
+
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Checking...';
+        }
+
+        try {
+          /*
+            Current password verification:
+            signInWithPassword confirms that the supplied email +
+            current password belong to the authenticated account.
+          */
+          const signInResult = await client.auth.signInWithPassword({
+            email,
+            password: currentPassword
+          });
+
+          if (signInResult.error) {
+            throw new Error('Current password সঠিক নয়');
+          }
+
+          if (
+            currentUser?.email &&
+            email !== String(currentUser.email).toLowerCase()
+          ) {
+            throw new Error('এই email আপনার account-এর email নয়');
+          }
+
+          if (button) button.textContent = 'Updating...';
+
+          const updateResult = await client.auth.updateUser({
+            password: newPassword
+          });
+
+          if (updateResult.error) {
+            throw new Error(updateResult.error.message);
+          }
+
+          closeModal('changePasswordModal');
+
+          showToast('Password সফলভাবে পরিবর্তন হয়েছে ✓');
+
+        } catch (error) {
+          console.error('Change password failed:', error);
+          showToast(error.message || 'Password পরিবর্তন হয়নি');
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = 'Password পরিবর্তন করুন';
+          }
+        }
+      });
+    }
+
+    openModal('changePasswordModal');
+  };
+
+  /*
+    New login Forgot Password action.
+  */
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-action="forgot-password"]');
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    void sendForgotPasswordEmail();
+  }, true);
+
+  /*
+    Logged-in profile password change.
+  */
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-action="change-password"]');
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    openChangePassword();
+  }, true);
+
+  /*
+    Supabase sends the user back to the application with a
+    PASSWORD_RECOVERY auth event after the email link is opened.
+  */
+  if (client) {
+    client.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setTimeout(openForgotRecovery, 0);
+      }
+    });
+  }
+})();
+
+/* CUSTOMER DASHBOARD ACTION CLEANUP */
+(function normalizeCustomerDashboardActions() {
+  if (window.__ziyanaCustomerDashboardActionsReady) return;
+  window.__ziyanaCustomerDashboardActionsReady = true;
+
+  function apply() {
+    if (!currentUser) return;
+
+    const actions = document.querySelector('.customer-dashboard-actions');
+    if (!actions) return;
+
+    const oldOrdersButton = actions.querySelector('[data-action="my-orders"]');
+    if (oldOrdersButton) oldOrdersButton.remove();
+
+    if (!actions.querySelector('[data-action="change-password"]')) {
+      const passwordButton = document.createElement('button');
+      passwordButton.type = 'button';
+      passwordButton.className = 'outline-button';
+      passwordButton.dataset.action = 'change-password';
+      passwordButton.textContent = 'পাসওয়ার্ড পরিবর্তন';
+
+      actions.prepend(passwordButton);
+    }
+  }
+
+  const original = renderCustomerDashboard;
+
+  renderCustomerDashboard = function() {
+    original();
+    setTimeout(apply, 0);
+  };
+
+  setTimeout(apply, 0);
+})();
+
+/* =========================================================
+   CHECKOUT AS A REAL PAGE VIEW
+   ========================================================= */
+(function setupCheckoutPageView() {
+  if (window.__ziyanaCheckoutPageReady) return;
+  window.__ziyanaCheckoutPageReady = true;
+
+  function ensureCheckoutPage() {
+    let page = document.querySelector('#checkoutPage');
+
+    if (!page) {
+      page = document.createElement('main');
+      page.id = 'checkoutPage';
+      page.innerHTML = `
+        <div class="checkout-page-shell">
+          <div class="checkout-page-topbar">
+            <button
+              type="button"
+              class="checkout-back-button"
+              data-checkout-back
+            >← শপিংয়ে ফিরে যান</button>
+
+            <div class="checkout-page-brand">
+              <span class="brand-mark">Z</span>
+              <strong>ziyanashop</strong>
+            </div>
+          </div>
+
+          <div id="checkoutPageContent"></div>
+        </div>
+      `;
+
+      document.body.appendChild(page);
+    }
+
+    const oldContent = document.querySelector('#checkoutModal #checkoutContent');
+    const pageContent = document.querySelector('#checkoutPageContent');
+
+    if (oldContent && pageContent && oldContent.parentElement !== pageContent) {
+      pageContent.appendChild(oldContent);
+    }
+
+    return page;
+  }
+
+  window.closeCheckoutPage = function() {
+    const page = document.querySelector('#checkoutPage');
+
+    document.body.classList.remove('checkout-page-active');
+
+    if (page) page.hidden = true;
+
+    window.scrollTo({top:0, behavior:'smooth'});
+  };
+
+  document.addEventListener('click', event => {
+    const back = event.target.closest('[data-checkout-back]');
+    if (!back) return;
+
+    event.preventDefault();
+    closeCheckoutPage();
+  }, true);
+
+  /*
+    Replace the old popup checkout with the page view.
+  */
+  window.openCheckout = function() {
+    if (!cart.length) {
+      return showToast('আগে কিছু পণ্য ব্যাগে যোগ করুন');
+    }
+
+    const drawer = $('#cartDrawer');
+    if (drawer) drawer.classList.remove('open');
+
+    const page = ensureCheckoutPage();
+
+    renderCheckout(captureCheckoutDraft());
+    ensureCheckoutRegionField();
+
+    page.hidden = false;
+    document.body.classList.add('checkout-page-active');
+
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.hidden = true;
+    });
+
+    const overlay = $('#overlay');
+    if (overlay) overlay.hidden = true;
+
+    window.scrollTo({top:0, behavior:'instant'});
+  };
+
+  /*
+    Make the normal closeModal('checkoutModal') return to Home
+    when any old code still calls it.
+  */
+  const originalCloseModal = closeModal;
+
+  window.closeModal = function(id = activeModal) {
+    if (id === 'checkoutModal' && document.body.classList.contains('checkout-page-active')) {
+      return closeCheckoutPage();
+    }
+
+    return originalCloseModal(id);
+  };
+
+  /*
+    Route any legacy checkout open call to the real page.
+  */
+  setTimeout(() => {
+    ensureCheckoutPage();
+  }, 0);
+})();
+
+/* CHECKOUT MOBILE + SUMMARY CONTROL HOTFIX V2 */
+(function installCheckoutHotfixV2() {
+  if (window.__ziyanaCheckoutHotfixV2) return;
+  window.__ziyanaCheckoutHotfixV2 = true;
+
+  function isCheckoutPageActive() {
+    return Boolean(
+      document.body?.classList.contains('checkout-page-active') &&
+      document.getElementById('checkoutPage')
+    );
+  }
+
+  function getCheckoutDraftSafe() {
+    try {
+      if (typeof captureCheckoutDraft === 'function') {
+        return captureCheckoutDraft();
+      }
+    } catch (error) {
+      console.error('Checkout draft capture failed:', error);
+    }
+    return checkoutDraft;
+  }
+
+  function rerenderCheckoutSafe() {
+    try {
+      renderCheckout(getCheckoutDraftSafe());
+    } catch (error) {
+      console.error('Checkout re-render failed:', error);
+    }
+
+    try {
+      if (typeof ensureCheckoutRegionField === 'function') {
+        ensureCheckoutRegionField();
+      }
+    } catch (error) {
+      console.error('Checkout region refresh failed:', error);
+    }
+  }
+
+  function findCartItem(id) {
+    if (!Array.isArray(cart)) return null;
+    return cart.find(item => String(item.id) === String(id)) || null;
+  }
+
+  document.addEventListener('click', function checkoutSummaryControlHotfix(event) {
+    if (!isCheckoutPageActive()) return;
+
+    const control = event.target.closest(
+      '[data-summary-minus], [data-summary-plus], [data-summary-remove]'
+    );
+
+    if (!control) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const id =
+      control.getAttribute('data-summary-minus') ||
+      control.getAttribute('data-summary-plus') ||
+      control.getAttribute('data-summary-remove');
+
+    const item = findCartItem(id);
+    if (!item) return;
+
+    if (control.hasAttribute('data-summary-minus')) {
+      item.quantity = Math.max(0, Number(item.quantity || 0) - 1);
+    } else if (control.hasAttribute('data-summary-plus')) {
+      item.quantity = Math.max(0, Number(item.quantity || 0) + 1);
+    } else if (control.hasAttribute('data-summary-remove')) {
+      item.quantity = 0;
+    }
+
+    if (Number(item.quantity || 0) <= 0) {
+      const index = cart.indexOf(item);
+      if (index >= 0) cart.splice(index, 1);
+    }
+
+    try {
+      saveState();
+    } catch (error) {
+      console.error('Checkout cart save failed:', error);
+    }
+
+    try {
+      updateCart();
+    } catch (error) {
+      console.error('Cart UI update failed:', error);
+    }
+
+    try {
+      renderGifts();
+    } catch (error) {
+      console.error('Gift UI update failed:', error);
+    }
+
+    try {
+      renderProducts();
+    } catch (error) {
+      console.error('Product UI update failed:', error);
+    }
+
+    if (!cart.length) {
+      try {
+        if (typeof window.closeCheckoutPage === 'function') {
+          window.closeCheckoutPage();
+        }
+      } catch (error) {
+        console.error('Checkout close failed:', error);
+      }
+      return;
+    }
+
+    rerenderCheckoutSafe();
+  }, true);
+})();
+
+
+
+
+/* PRODUCT DETAIL BUY NOW - DETAILS VIEW ONLY */
+(function installProductDetailBuyNow() {
+  if (window.__ziyanaBuyNowDetailsOnlyReady) return;
+  window.__ziyanaBuyNowDetailsOnlyReady = true;
+
+  function addBuyNowOnlyInsideDetails() {
+    const addButtons = Array.from(
+      document.querySelectorAll('.modal button, [role="dialog"] button')
+    ).filter(button => {
+      const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+      return text === 'ব্যাগে যোগ করুন';
+    });
+
+    addButtons.forEach(addButton => {
+      if (addButton.parentElement?.querySelector('.product-buy-now-button')) return;
+
+      const buyNow = document.createElement('button');
+      buyNow.type = 'button';
+      buyNow.className = 'primary-button product-buy-now-button';
+      buyNow.textContent = 'Buy Now';
+
+      addButton.insertAdjacentElement('afterend', buyNow);
+
+      buyNow.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        addButton.click();
+
+        setTimeout(() => {
+          try {
+            if (typeof window.openCheckout === 'function') {
+              window.openCheckout();
+            }
+          } catch (error) {
+            console.error('Buy Now checkout failed:', error);
+          }
+        }, 150);
+      });
+    });
+
+    // Remove any accidental Buy Now buttons outside the details/modal view.
+    document
+      .querySelectorAll('.product-buy-now-button')
+      .forEach(button => {
+        const insideDetails =
+          button.closest('.modal') ||
+          button.closest('[role="dialog"]');
+
+        if (!insideDetails) button.remove();
+      });
+  }
+
+  addBuyNowOnlyInsideDetails();
+
+  const observer = new MutationObserver(() => {
+    addBuyNowOnlyInsideDetails();
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+})();
