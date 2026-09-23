@@ -296,7 +296,7 @@ function closeModal(id = activeModal) { if (id) $(`#${id}`).hidden = true; activ
 
 function showToast(text) { const toast = $('#toast'); toast.textContent = text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
 
-async function handleCloudAuth(data) { const client = window.laibaSupabase; const identifier = data.identifier.toLowerCase().trim(); if (!identifier.includes('@')) return showToast('Supabase login-এর জন্য email ব্যবহার করুন'); const result = data.name ? await client.auth.signUp({email:identifier,password:data.password,options:{data:{name:data.name,phone:data.phone || ''}}}) : await client.auth.signInWithPassword({email:identifier,password:data.password}); if (result.error) return showToast(result.error.message); if (!result.data.user) return showToast('Authentication সম্পন্ন হয়নি'); if (data.name && !result.data.session) return showToast('Email inbox থেকে confirmation দিন'); const profileResult = await client.from('profiles').select('*').eq('id', result.data.user.id).single(); const profile = profileResult.data || {}; currentUser = {id:result.data.user.id,name:profile.name || data.name || identifier,email:identifier,phone:profile.phone || data.phone || '',address:profile.address || '',district:profile.district || '',password:'',role:profile.role || 'customer'}; write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) return currentUser.role === 'admin' ? renderAdmin() : showToast('Admin access denied'); if (pendingCheckout) { pendingCheckout = false; return openCheckout(); } if (!data.name && currentUser.role === 'admin') return renderAdmin(); if (!data.name) {
+async function handleCloudAuth(data) { const client = window.laibaSupabase; const identifier = data.identifier.toLowerCase().trim(); if (!identifier.includes('@')) return showToast('Supabase login-এর জন্য email ব্যবহার করুন'); const result = data.name ? await client.auth.signUp({email:identifier,password:data.password,options:{data:{name:data.name,phone:data.phone || ''}}}) : await client.auth.signInWithPassword({email:identifier,password:data.password}); if (result.error) return showToast(result.error.message); if (!result.data.user) return showToast('Authentication সম্পন্ন হয়নি'); if (data.name && !result.data.session) return showToast('Email inbox থেকে confirmation দিন'); const profileResult = await client.from('profiles').select('*').eq('id', result.data.user.id).single(); const profile = profileResult.data || {}; currentUser = {id:result.data.user.id,name:profile.name || data.name || identifier,email:identifier,phone:profile.phone || data.phone || '',address:profile.address || '',district:profile.district || '',password:'',role:profile.role || 'customer'}; write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) return currentUser.role === 'admin' ? renderAdmin() : showToast('Admin access denied'); if (pendingCheckout) { pendingCheckout = false; return window.openCheckout(); } if (!data.name && currentUser.role === 'admin') return renderAdmin(); if (!data.name) {
     accountOrderFilter = '';
     return renderCustomerDashboard();
   } }
@@ -903,17 +903,6 @@ function renderCheckout(draft = checkoutDraft) {
   const draftPhone = draft.phone || currentUser?.phone || '';
   const draftAddress = draft.address || currentUser?.address || '';
   const draftDistrict = draft.district || currentUser?.district || 'ঢাকা';
-  const gift = getActiveGift();
-  /*
-  $('#checkoutContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">SECURE CHECKOUT</p><h2>অর্ডার সম্পন্ন করুন</h2><p>${cart.length}টি পণ্য আপনার ব্যাগে আছে।</p></div><form id="checkoutForm" class="checkout-layout"><div class="stack-form"><input name="name" value="${escapeHtml(draftName)}" placeholder="পুরো নাম" required><input name="phone" value="${escapeHtml(draftPhone)}" placeholder="মোবাইল নম্বর" required><textarea name="address" placeholder="ডেলিভারি ঠিকানা" required>${escapeHtml(draftAddress)}</textarea><select name="district" required>${bangladeshDistricts.map(district => `<option value="${escapeHtml(district)}" ${checkoutDraft.district === district ? 'selected' : ''}>${escapeHtml(district)}</option>`).join('')}</select><select name="payment" required><option value="cod" ${draft.payment === 'cod' ? 'selected' : ''}>Cash on Delivery</option><option value="rocket" ${draft.payment === 'rocket' ? 'selected' : ''}>Rocket</option><option value="card" disabled ${draft.payment === 'card' ? 'selected' : ''}>Card (শীঘ্রই আসছে)</option></select><div class="coupon-row"><input id="couponInput" value="${escapeHtml(appliedCoupon?.code || '')}" placeholder="Coupon code"><button type="button" class="outline-button" data-action="apply-coupon">${appliedCoupon ? 'Change' : 'Apply'}</button>${appliedCoupon ? '<button type="button" class="outline-button danger-button" data-action="remove-coupon">Remove</button>' : ''}</div><p id="couponMessage" class="coupon-message">${appliedCoupon ? `${escapeHtml(appliedCoupon.code)} applied` : 'Try WELCOME10 or SAVE200'}</p></div><aside class="checkout-summary"><h3>Order summary</h3>${cart.map(item => `<div><span>${escapeHtml(item.name)} × ${item.quantity}</span><b>${money(item.price * item.quantity)}</b></div>`).join('')}${gift ? `<div class="gift-summary"><span>Free: ${escapeHtml(gift.title)} × 1</span><b>FREE</b></div>` : ''}<hr><div><span>Subtotal</span><b>${money(totals.subtotal)}</b></div><div><span>Discount</span><b class="discount-text">${totals.discount ? `-${money(totals.discount)}` : '৳০'}</b></div><div><span>Shipping charge</span><b>${totals.shipping ? money(totals.shipping) : 'FREE'}</b></div><div class="total-row"><span>Total</span><strong>${money(totals.total)}</strong></div><button class="primary-button" type="submit">অর্ডার কনফার্ম করুন <span>→</span></button></aside></form>`;
-*/
-}
-function renderCheckout(draft = checkoutDraft) {
-  const totals = checkoutTotals();
-  const draftName = draft.name || currentUser?.name || '';
-  const draftPhone = draft.phone || currentUser?.phone || '';
-  const draftAddress = draft.address || currentUser?.address || '';
-  const draftDistrict = draft.district || currentUser?.district || 'ঢাকা';
   const districtOptions = bangladeshDistricts.map(district => `<option value="${escapeHtml(district)}" ${draftDistrict === district ? 'selected' : ''}>${escapeHtml(district)}</option>`).join('');
   const itemsMarkup = cart.map(item => `<div class="summary-item"><img src="${escapeHtml(primaryProductImage(item))}" alt="${escapeHtml(item.name)}" loading="lazy"><span>${escapeHtml(item.name)}</span><div class="summary-item-actions"><button type="button" data-summary-minus="${item.id}">−</button><b>${item.quantity}</b><button type="button" data-summary-plus="${item.id}">+</button><strong>${money(item.price * item.quantity)}</strong><button type="button" class="summary-remove" data-summary-remove="${item.id}">×</button></div></div>`).join('');
   const gift = getActiveGift();
@@ -923,7 +912,6 @@ function renderCheckout(draft = checkoutDraft) {
   $('#checkoutContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">SECURE CHECKOUT</p><h2>অর্ডার সম্পন্ন করুন</h2><p>${cart.length}টি পণ্য আপনার ব্যাগে আছে।</p></div><form id="checkoutForm" class="checkout-layout"><div class="stack-form"><input name="name" value="${escapeHtml(draftName)}" placeholder="পুরো নাম" required><input name="phone" value="${escapeHtml(draftPhone)}" placeholder="মোবাইল নম্বর" required><textarea name="address" placeholder="ডেলিভারি ঠিকানা" required>${escapeHtml(draftAddress)}</textarea><select name="district" required>${districtOptions}</select><select name="payment" required><option value="cod" ${draft.payment === 'cod' ? 'selected' : ''}>Cash on Delivery</option><option value="bkash" ${draft.payment === 'bkash' ? 'selected' : ''}>bKash</option><option value="rocket" ${draft.payment === 'rocket' ? 'selected' : ''}>Rocket</option><option value="card" disabled>Card (শীঘ্রই আসছে)</option></select><div class="coupon-row"><input id="couponInput" value="${escapeHtml(appliedCoupon?.code || '')}" placeholder="Coupon code"><button type="button" class="outline-button" data-action="apply-coupon">${appliedCoupon ? 'Change' : 'Apply'}</button>${couponMarkup}</div><p id="couponMessage" class="coupon-message">${couponMessage}</p></div><aside class="checkout-summary"><h3>Order summary</h3>${itemsMarkup}${giftMarkup}<hr><div><span>Subtotal</span><b>${money(totals.subtotal)}</b></div><div><span>Discount</span><b class="discount-text">${totals.discount ? `-${money(totals.discount)}` : '৳০'}</b></div><div><span>Shipping charge</span><b>${totals.shipping ? money(totals.shipping) : 'FREE'}</b></div><div class="total-row"><span>Total</span><strong>${money(totals.total)}</strong></div><button class="primary-button" type="submit">অর্ডার কনফার্ম করুন <span>→</span></button></aside></form>`;
 }
 function ensureCheckoutRegionField() {}
-function openCheckout() { if (!cart.length) return showToast('আগে কিছু পণ্য ব্যাগে যোগ করুন'); $('#cartDrawer').classList.remove('open'); renderCheckout(); ensureCheckoutRegionField(); openModal('checkoutModal'); }
 function renderAdmin() {
   if (!currentUser || currentUser.role !== 'admin') { pendingAdmin = true; currentUser = null; write('laiba_current_user', null); return openAuth('login'); }
   const revenue = orders.reduce((sum, order) => sum + order.total, 0);
@@ -1128,7 +1116,7 @@ bindClick('#accountButton', () => {
 
 bindClick('#ordersButton', openOrders);
 
-bindClick('.checkout-button', openCheckout);
+bindClick('.checkout-button', () => window.openCheckout());
 
 bindClick('#categoryMenu', () => {
   const categories = $('#categories');
@@ -1157,7 +1145,7 @@ document.addEventListener('click', event => {
   if (action === 'order-tracker') { event.preventDefault(); return renderOrderTracker(); }
   if (action === 'mall-products') { event.preventDefault(); return showMallProducts(); }
   const infoPage = event.target.closest('[data-info-page]'); if (infoPage) { event.preventDefault(); return showInfoPage(infoPage.dataset.infoPage); }
-  const buyNow = event.target.closest('[data-buy-now]'); if (buyNow) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(buyNow.dataset.buyNow)); if (!product || product.stock < 1) return showToast('এই পণ্যটি এখন স্টকে নেই'); addToCart(buyNow.dataset.buyNow); return openCheckout(); }
+  const buyNow = event.target.closest('[data-buy-now]'); if (buyNow) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(buyNow.dataset.buyNow)); if (!product || product.stock < 1) return showToast('এই পণ্যটি এখন স্টকে নেই'); addToCart(buyNow.dataset.buyNow); return window.openCheckout(); }
   if (action === 'open-admin') return renderAdmin(); if (action === 'my-orders') { if (currentUser?.role === 'admin') { accountOrderFilter = ''; renderOrders(); openModal('ordersModal'); return; } return renderCustomerDashboard(); } if (action === 'reset-password') { const password = `Laiba${String(currentUser.id).slice(-4)}`; currentUser.password = password; users = users.map(user => user.id === currentUser.id ? currentUser : user); saveState(); return showToast(`Default password: ${password}`); } if (action === 'toggle-ad-form') { $('#adForm').hidden = !$('#adForm').hidden; return; } if (action === 'apply-coupon') return applyCoupon(); if (action === 'remove-coupon') { appliedCoupon = null; renderCheckout(captureCheckoutDraft()); showToast('Coupon removed'); return; }
   if (action === 'track-order') { const query = $('#trackInput').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || users.find(user => user.id === item.userId)?.email?.toLowerCase() === query); if (!order) return showToast('Order পাওয়া যায়নি'); return showAdminOrder(order.id); }
   if (action === 'public-track-order') { const query = $('#publicTrackInput').value.trim().toLowerCase(); const order = orders.find(item => item.id.toLowerCase() === query || item.customer.phone.toLowerCase() === query || item.customer.email?.toLowerCase() === query); if (!order) { $('#publicTrackResult').innerHTML = '<p class="empty-state">এই তথ্য দিয়ে কোনো order পাওয়া যায়নি।</p>'; return; } $('#publicTrackResult').innerHTML = `<article class="order-card tracker-result"><div><b>Order #${escapeHtml(order.id)}</b><small>${escapeHtml(order.createdAt)}</small></div><span class="status ${order.status}">${escapeHtml(order.statusLabel)}</span><strong>${money(order.total)}</strong><p>${order.items.map(item => `${escapeHtml(item.name)} × ${item.quantity}`).join(', ')}</p>${order.trackingUrl ? `<a class="tracking-button" href="${escapeHtml(order.trackingUrl)}" target="_blank" rel="noopener">Courier tracking খুলুন</a>` : '<small>Courier tracking update হলে এখানে দেখা যাবে।</small>'}</article>`; return; }
@@ -1317,7 +1305,7 @@ document.addEventListener('change', event => {
 document.addEventListener('input', event => { if (event.target.id === 'adminProductSearch') renderAdminProductList(event.target.value); });
 document.addEventListener('submit', event => {
   event.preventDefault(); const form = event.target; const data = Object.fromEntries(new FormData(form));
-  if (form.id === 'authForm') { const identifier = data.identifier.toLowerCase().trim(); const isLogin = data.authMode === 'login'; if (data.name) { if (users.some(user => user.email === identifier || user.phone === data.phone)) return showToast('এই ইমেইল বা মোবাইলে অ্যাকাউন্ট আছে'); currentUser = {id:Date.now(),name:data.name,email:identifier.includes('@') ? identifier : '',phone:data.phone,address:data.address || '',password:data.password,role:'customer'}; users.push(currentUser); } else { const found = users.find(user => (user.email === identifier || user.phone === identifier) && user.password === data.password); if (!found) return showToast('ইমেইল/মোবাইল অথবা পাসওয়ার্ড সঠিক নয়'); currentUser = found; } write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) { if (currentUser.role === 'admin') renderAdmin(); else showToast('Admin access denied'); } else if (pendingCheckout) { pendingCheckout = false; openCheckout(); } else if (isLogin) { if (currentUser.role === 'admin') renderAdmin(); else openOrders(); } return; }
+  if (form.id === 'authForm') { const identifier = data.identifier.toLowerCase().trim(); const isLogin = data.authMode === 'login'; if (data.name) { if (users.some(user => user.email === identifier || user.phone === data.phone)) return showToast('এই ইমেইল বা মোবাইলে অ্যাকাউন্ট আছে'); currentUser = {id:Date.now(),name:data.name,email:identifier.includes('@') ? identifier : '',phone:data.phone,address:data.address || '',password:data.password,role:'customer'}; users.push(currentUser); } else { const found = users.find(user => (user.email === identifier || user.phone === identifier) && user.password === data.password); if (!found) return showToast('ইমেইল/মোবাইল অথবা পাসওয়ার্ড সঠিক নয়'); currentUser = found; } write('laiba_current_user', currentUser); const shouldOpenAdmin = pendingAdmin; pendingAdmin = false; closeModal('authModal'); showToast(`স্বাগতম, ${currentUser.name}`); if (shouldOpenAdmin) { if (currentUser.role === 'admin') renderAdmin(); else showToast('Admin access denied'); } else if (pendingCheckout) { pendingCheckout = false; window.openCheckout(); } else if (isLogin) { if (currentUser.role === 'admin') renderAdmin(); else openOrders(); } return; }
   if (form.id === 'checkoutForm') { checkoutDraft = {...checkoutDraft, district:data.district || 'ঢাকা', name:data.name, phone:data.phone, address:data.address, payment:data.payment}; return placeOrder(data); }
   if (form.id === 'productForm') { const price = Number(data.price); const old = Number(data.old); products.unshift({id:Date.now(),name:data.name,price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:data.image,description:data.description}); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); return; }
   if (form.id === 'productEditForm') { const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock)) || !data.image?.trim()) return showToast('Product-এর সব তথ্য পূরণ করুন'); Object.assign(product, {name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',category:data.category,stock:Number(data.stock),image:data.image.trim(),description:data.description || ''}); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); return; }
@@ -3521,3 +3509,97 @@ async function handleAdminOrderStatusChange(order, select) {
   });
 })();
 
+
+
+/* SUBCATEGORY CLICK ROUTING */
+(function installSubcategoryClickRouting() {
+  if (window.__ziyanaSubcategoryClickRoutingReady) return;
+  window.__ziyanaSubcategoryClickRoutingReady = true;
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-category-subcategory]');
+    if (!button) return;
+
+    const categoryId = String(button.dataset.categoryId || '').trim();
+    const subcategoryName = String(
+      button.dataset.categorySubcategory || ''
+    ).trim();
+
+    const category = getActiveCategories().find(
+      item => String(item.id) === categoryId
+    );
+
+    if (!category) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const key = String(category.id).replace(
+      /[^a-zA-Z0-9_-]/g,
+      '-'
+    );
+
+    window[`${key}Subcategory`] = subcategoryName;
+    window[`${key}ShowingAll`] = false;
+
+    renderCategoryRows();
+
+    const section = document.querySelector(
+      `#category-${CSS.escape(String(category.id))}`
+    );
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    if (typeof closeCategoryFloatingSubmenu === 'function') {
+      closeCategoryFloatingSubmenu();
+    }
+
+    showToast(
+      subcategoryName
+        ? `${category.name} · ${subcategoryName} দেখানো হচ্ছে`
+        : `${category.name} · সব পণ্য দেখানো হচ্ছে`
+    );
+  }, true);
+})();
+
+
+/* ADMIN EDITOR OVERLAY ROUTING FIX */
+(function installAdminEditorOverlayRouting() {
+  if (window.__ziyanaAdminEditorOverlayRoutingReady) return;
+  window.__ziyanaAdminEditorOverlayRoutingReady = true;
+
+  function closeAdminEditorOverlay() {
+    const closeButton = document.querySelector(
+      '.admin-editor-backdrop [data-admin-editor-close]'
+    );
+
+    if (closeButton) {
+      closeButton.click();
+    }
+  }
+
+  document.addEventListener('click', event => {
+    const editControl = event.target.closest(
+      '[data-edit-product], [data-edit-coupon], [data-edit-ad], [data-edit-tracking], [data-edit-gift]'
+    );
+
+    if (editControl) {
+      closeAdminEditorOverlay();
+    }
+  }, true);
+
+  document.addEventListener('submit', event => {
+    const form = event.target.closest(
+      '#categoryForm, #productEditForm, #couponEditForm, #adEditForm, #trackingForm, #giftEditForm'
+    );
+
+    if (form) {
+      closeAdminEditorOverlay();
+    }
+  }, true);
+})();
