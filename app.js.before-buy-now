@@ -714,7 +714,35 @@ function getCampaignProducts() {
   const unique = new Map(managed.map(product => [Number(product.id), product]));
   return unique.size ? [...unique.values()] : products;
 }
-function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy"><button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
+function productMarkup(product) {
+  const image = primaryProductImage(product);
+  return `<article class="product-card">
+    <div class="product-image">
+      <img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy">
+      <button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button>
+      <span class="discount">${escapeHtml(product.discount || '')}</span>
+    </div>
+    <div class="product-info">
+      <h3>${escapeHtml(product.name)}</h3>
+      <div>
+        <span class="stars">★★★★★</span>
+        <span class="rating">(${escapeHtml(product.rating || '4.8')})</span>
+      </div>
+      <div class="price">
+        <strong>${money(product.price)}</strong>
+        <span class="old-price">${money(product.old)}</span>
+      </div>
+      <small class="stock-note">
+        ${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}
+      </small>
+      <div class="product-actions">
+        <button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>
+          ${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}
+        </button>
+      </div>
+    </div>
+  </article>`;
+}
 function renderNewArrivals() { const selectedIds = new Set((campaignSettings.productIds || []).map(Number)); const selected = products.filter(product => selectedIds.has(Number(product.id))).slice(0, 5); const grid = $('#newArrivalProductGrid'); if (grid) grid.innerHTML = selected.length ? selected.map(productMarkup).join('') : '<p class="empty-state">Admin panel থেকে New arrival products select করুন।</p>'; }
 function renderCategoryRows() {
   const container = $('#dynamicCategorySections');
@@ -869,7 +897,58 @@ function renderOrders() {
   `;
 }
 
-function showGiftDetails(giftId) { const gift = gifts.find(item => item.id === Number(giftId)); if (!gift) return; const selected = products.filter(product => (gift.productIds || []).map(Number).includes(Number(product.id)) || (gift.giftCategory && productMatchesCategory(product, gift.giftCategory))); const cards = selected.map(product => `<article class="product-card"><div class="product-image"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}"><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>ব্যাগে যোগ করুন</button></div></div></article>`).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2><p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
+function showGiftDetails(giftId) {
+  const gift = gifts.find(item => item.id === Number(giftId));
+  if (!gift) return;
+
+  const selectedIds = new Set((gift.productIds || []).map(Number));
+
+  const selected = products.filter(product =>
+    selectedIds.has(Number(product.id)) ||
+    (gift.giftCategory && productMatchesCategory(product, gift.giftCategory))
+  );
+
+  const unique = new Map(
+    selected.map(product => [Number(product.id), product])
+  );
+
+  const cards = [...unique.values()].map(product => `
+    <article class="product-card">
+      <div class="product-image">
+        <img src="${escapeHtml(primaryProductImage(product))}" alt="${escapeHtml(product.name)}">
+        <span class="discount">${escapeHtml(product.discount || '')}</span>
+      </div>
+      <div class="product-info">
+        <h3>${escapeHtml(product.name)}</h3>
+        <div class="price">
+          <strong>${money(product.price)}</strong>
+          <span class="old-price">${money(product.old)}</span>
+        </div>
+        <small class="stock-note">
+          ${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}
+        </small>
+        <div class="product-actions">
+          <button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>
+            ${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}
+          </button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+
+  $('#campaignViewContent').innerHTML = `
+    <div class="campaign-view-header">
+      <p class="eyebrow">FREE GIFT CAMPAIGN</p>
+      <h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2>
+      <p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p>
+    </div>
+    <div class="campaign-product-grid">
+      ${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}
+    </div>
+  `;
+
+  openModal('campaignViewModal');
+}
 function showAdDetails(adId) { const ad = ads.find(item => item.id === Number(adId)); if (!ad) return; const selected = products.filter(product => (ad.productIds || []).map(Number).includes(Number(product.id)) || (ad.targetCategory && productMatchesCategory(product, ad.targetCategory))); const cards = selected.map(productMarkup).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP CAMPAIGN</p><h2>${escapeHtml(ad.title)}</h2><p>${escapeHtml(ad.text)}</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
 function showMallProducts() {
   const selectedIds = new Set((mallSettings.productIds || []).map(Number));
@@ -3390,71 +3469,6 @@ async function handleAdminOrderStatusChange(order, select) {
 
 
 
-
-/* PRODUCT DETAIL BUY NOW - DETAILS VIEW ONLY */
-(function installProductDetailBuyNow() {
-  if (window.__ziyanaBuyNowDetailsOnlyReady) return;
-  window.__ziyanaBuyNowDetailsOnlyReady = true;
-
-  function addBuyNowOnlyInsideDetails() {
-    const addButtons = Array.from(
-      document.querySelectorAll('.modal button, [role="dialog"] button')
-    ).filter(button => {
-      const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
-      return text === 'ব্যাগে যোগ করুন';
-    });
-
-    addButtons.forEach(addButton => {
-      if (addButton.parentElement?.querySelector('.product-buy-now-button')) return;
-
-      const buyNow = document.createElement('button');
-      buyNow.type = 'button';
-      buyNow.className = 'primary-button product-buy-now-button';
-      buyNow.textContent = 'Buy Now';
-
-      addButton.insertAdjacentElement('afterend', buyNow);
-
-      buyNow.addEventListener('click', function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        addButton.click();
-
-        setTimeout(() => {
-          try {
-            if (typeof window.openCheckout === 'function') {
-              window.openCheckout();
-            }
-          } catch (error) {
-            console.error('Buy Now checkout failed:', error);
-          }
-        }, 150);
-      });
-    });
-
-    // Remove any accidental Buy Now buttons outside the details/modal view.
-    document
-      .querySelectorAll('.product-buy-now-button')
-      .forEach(button => {
-        const insideDetails =
-          button.closest('.modal') ||
-          button.closest('[role="dialog"]');
-
-        if (!insideDetails) button.remove();
-      });
-  }
-
-  addBuyNowOnlyInsideDetails();
-
-  const observer = new MutationObserver(() => {
-    addBuyNowOnlyInsideDetails();
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-})();
 
 /* PRODUCT DETAILS BUTTON HOVER - FORCE HOME STYLE */
 (function forceProductDetailsButtonHover() {
