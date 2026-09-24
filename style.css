@@ -1,4 +1,17 @@
-.campaign-view-modal{width:min(1050px,calc(100% - 24px));background:#f7f8ef}.campaign-view-modal .campaign-view-header{padding:22px 24px;background:linear-gradient(135deg,#f0f6d5,#fff0e7)}.campaign-view-modal .campaign-product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;padding:20px}.campaign-view-modal .product-card{min-width:0;border-radius:16px;background:#fff;overflow:hidden;box-shadow:0 8px 22px #27321b18;transition:transform .2s ease,box-shadow .2s ease}.campaign-view-modal .product-card:hover{transform:translateY(-5px) rotate(-.5deg);box-shadow:0 14px 30px #27321b2b}.campaign-view-modal .product-image{aspect-ratio:1/1;background:linear-gradient(145deg,#f1f5d9,#ffe8de);padding:12px}.campaign-view-modal .product-image img{width:100%;height:100%;object-fit:cover;border-radius:12px;padding:0}.campaign-view-modal .product-info{padding:12px}.campaign-view-modal .product-actions{grid-template-columns:1fr}.campaign-view-modal .buy-now-button{margin-top:0!important}
+.campaign-view-modal{width:min(1050px,calc(100% - 24px));background:#f7f8ef}.campaign-view-modal .campaign-view-header{padding:22px 24px;background:linear-gradient(135deg,#f0f6d5,#fff0e7)}.campaign-view-modal .campaign-product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;padding:20px}.campaign-view-modal .product-card{min-width:0;border-radius:16px;background:#fff;overflow:hidden;box-shadow:0 8px 22px #27321b18;transition:transform .2s ease,box-shadow .2s ease}.campaign-view-modal .product-card:hover{transform:translateY(-5px) rotate(-.5deg);box-shadow:0 14px 30px #27321b2b}.campaign-view-modal .product-image{aspect-ratio:1/1;background:linear-gradient(145deg,#f1f5d9,#ffe8de);padding:12px}.campaign-view-modal .product-image img{width:100%;height:100%;object-fit:cover;border-radius:12px;padding:0}.campaign-view-modal .product-info{padding:12px}.campaign-view-modal .product-actions{grid-template-columns:1fr}.campaign-view-modal .buy-now-button{
+  width:100%;
+  margin-top:13px!important;
+  border:1px solid var(--ink);
+  background:#fff;
+  color:var(--ink);
+  padding:9px!important;
+  font-size:11px;
+  font-weight:600;
+}
+.campaign-view-modal .buy-now-button:hover{
+  background:var(--ink);
+  color:#fff;
+}
 .gift-rule-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}.gift-rule-fields label{display:grid;gap:6px;color:var(--muted);font-size:10px;font-weight:700}.gift-rule-fields input,.gift-rule-fields select{width:100%;margin:0}
 @media(max-width:600px){.gift-rule-fields{grid-template-columns:1fr}}
 .info-modal{background:#f7f8ef}.info-page{max-width:720px;margin:0 auto;padding:26px}.info-page h2{font:800 32px var(--heading);margin:8px 0 12px}.info-page>p:not(.eyebrow){color:var(--muted);line-height:1.7}.info-points{display:grid;gap:10px;margin-top:24px}.info-points>div{display:flex;align-items:center;gap:14px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:12px}.info-points b{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--coral);color:#fff}.tracker-result{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -4543,5 +4556,35 @@ body.checkout-page-active #checkoutForm.checkout-layout > .checkout-summary {
 .product-details-light-view button.primary-button:focus:hover {
   background: #111111 !important;
   color: #ffffff !important;
+}
+
+
+/* BUY NOW - MATCH HOME PAGE */
+.product-buy-now-button {
+  width: 100% !important;
+  margin-top: 13px !important;
+  background: #fff !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--ink) !important;
+  border-radius: 3px !important;
+  padding: 9px !important;
+  min-height: auto !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  transition: background .2s ease, color .2s ease !important;
+}
+
+.product-buy-now-button:hover {
+  background: var(--ink) !important;
+  color: #fff !important;
+  border-color: var(--ink) !important;
+}
+
+
+.product-buy-now-button {
+  text-align: center !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
