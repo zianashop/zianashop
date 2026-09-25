@@ -1403,32 +1403,62 @@ if (!window.__campaignAutoSliderBound) {
     document.querySelectorAll(selector).forEach(container => {
       const items = [...container.children].filter(item => item.nodeType === 1);
 
+      if (!items.length) return;
+
+      const oldTimer = sliderTimers.get(container);
+      if (oldTimer) clearInterval(oldTimer);
+
+      /*
+       * IMPORTANT:
+       * Every campaign card gets exactly the same large width/height.
+       */
+      container.style.display = 'flex';
+      container.style.flexDirection = 'row';
+      container.style.flexWrap = 'nowrap';
+      container.style.width = '100%';
+      container.style.maxWidth = '100%';
+      container.style.overflowX = 'auto';
+      container.style.overflowY = 'hidden';
+      container.style.scrollBehavior = 'smooth';
+      container.style.scrollSnapType = 'x mandatory';
+      container.style.gap = '0';
+
+      items.forEach(item => {
+        item.style.boxSizing = 'border-box';
+        item.style.flex = '0 0 100%';
+        item.style.width = '100%';
+        item.style.minWidth = '100%';
+        item.style.maxWidth = '100%';
+        item.style.height = window.innerWidth <= 800 ? '220px' : '250px';
+        item.style.minHeight = window.innerWidth <= 800 ? '220px' : '250px';
+        item.style.maxHeight = window.innerWidth <= 800 ? '220px' : '250px';
+        item.style.scrollSnapAlign = 'start';
+        item.style.overflow = 'hidden';
+
+        const image = item.querySelector('img');
+
+        if (image) {
+          image.style.width = '100%';
+          image.style.height = window.innerWidth <= 800 ? '220px' : '250px';
+          image.style.minHeight = window.innerWidth <= 800 ? '220px' : '250px';
+          image.style.maxHeight = window.innerWidth <= 800 ? '220px' : '250px';
+          image.style.objectFit = 'cover';
+        }
+      });
+
       if (items.length < 2) {
-        const oldTimer = sliderTimers.get(container);
-        if (oldTimer) clearInterval(oldTimer);
         sliderTimers.delete(container);
         return;
       }
-
-      if (sliderTimers.has(container)) return;
-
-      container.style.display = 'flex';
-      container.style.flexWrap = 'nowrap';
-      container.style.overflowX = 'auto';
-      container.style.scrollBehavior = 'smooth';
-      container.style.scrollSnapType = 'x mandatory';
-
-      items.forEach(item => {
-        item.style.flex = '0 0 100%';
-        item.style.minWidth = '100%';
-        item.style.scrollSnapAlign = 'start';
-      });
 
       const timer = setInterval(() => {
         const maxScroll = container.scrollWidth - container.clientWidth;
 
         if (container.scrollLeft >= maxScroll - 5) {
-          container.scrollTo({left: 0, behavior: 'smooth'});
+          container.scrollTo({
+            left: 0,
+            behavior: 'smooth'
+          });
         } else {
           container.scrollBy({
             left: container.clientWidth,
@@ -1449,10 +1479,16 @@ if (!window.__campaignAutoSliderBound) {
   refreshCampaignSliders();
 
   const observer = new MutationObserver(refreshCampaignSliders);
-  observer.observe(document.body, {childList:true, subtree:true});
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  window.addEventListener('resize', refreshCampaignSliders);
 }
 
 /* ADMIN TILE -> EDITOR POPUP */
+
 if (!window.__adminTileEditorBound) {
   window.__adminTileEditorBound = true;
 

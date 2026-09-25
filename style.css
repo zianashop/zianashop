@@ -1021,38 +1021,61 @@
 }
 
 
-/* WEEKEND CAMPAIGN SAME SIZE AS ALL BANNERS */
-.ad-grid{
+
+/* ALL CAMPAIGN / AD CARDS SAME LARGE SIZE */
+#adGrid{
+  display:grid!important;
   grid-template-columns:1fr!important;
   width:100%!important;
+  gap:16px!important;
 }
 
-.ad-grid .ad-card{
-  width:100%!important;
-  height:250px!important;
-  min-height:250px!important;
+#adGrid .ad-card{
+  display:grid!important;
   grid-template-columns:48% 52%!important;
+  width:100%!important;
+  min-width:100%!important;
+  max-width:100%!important;
+  height:250px!important;
+  min-height:250px!important;
+  max-height:250px!important;
+  flex:0 0 100%!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
 }
 
-.ad-grid .ad-card img{
+#adGrid .ad-card img{
+  display:block!important;
   width:100%!important;
   height:250px!important;
   min-height:250px!important;
+  max-height:250px!important;
   object-fit:cover!important;
 }
 
-@media(max-width:800px){
-  .ad-grid .ad-card{
-    height:220px!important;
-    min-height:220px!important;
-  }
-
-  .ad-grid .ad-card img{
-    height:220px!important;
-    min-height:220px!important;
-  }
+#adGrid .ad-card > span{
+  min-width:0!important;
+  width:100%!important;
+  box-sizing:border-box!important;
 }
 
+#adGrid .ad-card > strong{
+  flex-shrink:0!important;
+}
+
+@media(max-width:800px){
+  #adGrid .ad-card{
+    height:220px!important;
+    min-height:220px!important;
+    max-height:220px!important;
+  }
+
+  #adGrid .ad-card img{
+    height:220px!important;
+    min-height:220px!important;
+    max-height:220px!important;
+  }
+}
 
 /* TINY NATURAL GAP BEFORE FREE GIFT */
 #mall + .gift-section{
@@ -4586,5 +4609,918 @@ body.checkout-page-active #checkoutForm.checkout-layout > .checkout-summary {
   text-align: center !important;
   justify-content: center !important;
   align-items: center !important;
+}
+
+
+/* =========================================================
+   ZIYANA CAMPAIGN BANNER - FULL IMAGE OVERLAY
+   ========================================================= */
+
+.campaign-banner{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  height:280px!important;
+  min-height:280px!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+  background:#111!important;
+}
+
+/* Full banner image */
+.campaign-banner .campaign-visual{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  display:block!important;
+  z-index:1!important;
+}
+
+.campaign-banner .campaign-visual>img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+
+/* Dark/light overlay so text remains readable */
+.campaign-banner .campaign-visual::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.62) 0%,
+    rgba(0,0,0,.35) 45%,
+    rgba(0,0,0,.08) 100%
+  )!important;
+  z-index:2!important;
+}
+
+/* Text goes on top of image */
+.campaign-banner>div:first-child{
+  position:relative!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  box-sizing:border-box!important;
+  padding:28px 42px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+
+/* Small campaign heading */
+.campaign-banner .eyebrow{
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  letter-spacing:2px!important;
+  margin:0 0 8px!important;
+  text-shadow:0 2px 8px rgba(0,0,0,.35)!important;
+}
+
+/* Main campaign text */
+.campaign-banner h2{
+  color:#fff!important;
+  font-size:34px!important;
+  line-height:1.08!important;
+  margin:0 0 10px!important;
+  text-shadow:0 2px 10px rgba(0,0,0,.4)!important;
+}
+
+.campaign-banner h2 em{
+  color:#ffd36a!important;
+  font-style:normal!important;
+}
+
+/* Description */
+.campaign-banner p:not(.eyebrow){
+  color:#fff!important;
+  max-width:520px!important;
+  margin:0 0 16px!important;
+  font-size:14px!important;
+  line-height:1.5!important;
+  text-shadow:0 2px 7px rgba(0,0,0,.4)!important;
+}
+
+/* Button */
+.campaign-banner .dark-button{
+  position:relative!important;
+  z-index:6!important;
+  background:#fff!important;
+  color:#171717!important;
+  border:none!important;
+}
+
+/* Discount circle stays on image */
+.campaign-banner .campaign-stamp{
+  position:absolute!important;
+  z-index:6!important;
+  right:25px!important;
+  bottom:20px!important;
+  width:125px!important;
+  height:125px!important;
+  box-shadow:0 5px 20px rgba(0,0,0,.25)!important;
+}
+
+/* Mobile */
+@media(max-width:800px){
+  .campaign-banner{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .campaign-banner>div:first-child{
+    padding:25px 22px!important;
+    justify-content:flex-end!important;
+    padding-bottom:30px!important;
+  }
+
+  .campaign-banner h2{
+    font-size:27px!important;
+  }
+
+  .campaign-banner p:not(.eyebrow){
+    font-size:12px!important;
+    max-width:75%!important;
+  }
+
+  .campaign-banner .campaign-stamp{
+    width:90px!important;
+    height:90px!important;
+    right:15px!important;
+    bottom:18px!important;
+    font-size:10px!important;
+  }
+
+  .campaign-banner .campaign-stamp b{
+    font-size:20px!important;
+  }
+}
+
+
+/* ============================================================
+   ZIYANA SHOP - ALL IMAGE BANNERS FULL IMAGE OVERLAY SYSTEM
+   ============================================================ */
+
+/* ---------- COMMON ---------- */
+
+.campaign-banner,
+.gift-card,
+.ad-card,
+.story-card{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  overflow:hidden!important;
+  padding:0!important;
+  border-radius:0!important;
+  box-sizing:border-box!important;
+}
+
+/* ---------- CAMPAIGN BANNER ---------- */
+
+.campaign-banner{
+  height:320px!important;
+  min-height:320px!important;
+  background:#111!important;
+}
+
+.campaign-banner .campaign-visual{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  display:block!important;
+  z-index:1!important;
+}
+
+.campaign-banner .campaign-visual>img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+
+.campaign-banner .campaign-visual::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.72),
+    rgba(0,0,0,.42) 48%,
+    rgba(0,0,0,.08)
+  )!important;
+  z-index:2!important;
+}
+
+.campaign-banner>div:first-child{
+  position:relative!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  padding:35px 48px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+
+.campaign-banner .eyebrow{
+  color:#fff!important;
+  margin-bottom:9px!important;
+  text-shadow:0 2px 8px #0008!important;
+}
+
+.campaign-banner h2{
+  color:#fff!important;
+  font-size:38px!important;
+  line-height:1.08!important;
+  margin:0 0 12px!important;
+  text-shadow:0 3px 12px #0009!important;
+}
+
+.campaign-banner h2 em{
+  color:#ffd65a!important;
+}
+
+.campaign-banner p:not(.eyebrow){
+  color:#fff!important;
+  max-width:500px!important;
+  font-size:13px!important;
+  line-height:1.55!important;
+  margin:0 0 18px!important;
+  text-shadow:0 2px 8px #0008!important;
+}
+
+.campaign-banner .dark-button{
+  background:#fff!important;
+  color:#171717!important;
+}
+
+.campaign-banner .campaign-stamp{
+  position:absolute!important;
+  z-index:6!important;
+  right:28px!important;
+  bottom:24px!important;
+  margin:0!important;
+}
+
+/* ---------- SPECIAL CAMPAIGN CARDS ---------- */
+
+.ad-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:18px!important;
+}
+
+.ad-card{
+  height:220px!important;
+  min-height:220px!important;
+  background:#111!important;
+  color:#fff!important;
+}
+
+.ad-card img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  opacity:1!important;
+  z-index:1!important;
+}
+
+.ad-card::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.72),
+    rgba(0,0,0,.30) 65%,
+    rgba(0,0,0,.08)
+  )!important;
+  z-index:2!important;
+}
+
+.ad-card span{
+  position:absolute!important;
+  z-index:5!important;
+  left:0!important;
+  bottom:0!important;
+  width:100%!important;
+  padding:25px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  gap:6px!important;
+}
+
+.ad-card small{
+  color:#d7f451!important;
+  text-shadow:0 2px 5px #000!important;
+}
+
+.ad-card b{
+  color:#fff!important;
+  font-size:22px!important;
+  text-shadow:0 2px 8px #000!important;
+}
+
+.ad-card em{
+  color:#fff!important;
+  font-style:normal!important;
+  text-shadow:0 2px 6px #000!important;
+}
+
+.ad-card>strong{
+  z-index:6!important;
+  color:#fff!important;
+  text-shadow:0 2px 7px #000!important;
+}
+
+/* ---------- GIFT CARD ---------- */
+
+.gift-grid{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:18px!important;
+}
+
+.gift-card{
+  height:260px!important;
+  min-height:260px!important;
+  background:#111!important;
+  color:#fff!important;
+}
+
+.gift-card img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  background:none!important;
+  z-index:1!important;
+}
+
+.gift-card::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.72),
+    rgba(0,0,0,.32) 65%,
+    rgba(0,0,0,.05)
+  )!important;
+  z-index:2!important;
+}
+
+.gift-card>div{
+  position:relative!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  padding:25px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-end!important;
+}
+
+.gift-card h3{
+  color:#fff!important;
+  font-size:20px!important;
+  text-shadow:0 2px 8px #000!important;
+}
+
+.gift-card p:not(.eyebrow),
+.gift-card small{
+  color:#fff!important;
+  text-shadow:0 2px 6px #000!important;
+}
+
+.gift-card .gift-summary{
+  color:#d7f451!important;
+}
+
+/* ---------- FEATURED / STORY ---------- */
+
+.story-card{
+  height:320px!important;
+  min-height:320px!important;
+  background:#111!important;
+}
+
+.story-card>img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  z-index:1!important;
+  mix-blend-mode:normal!important;
+}
+
+.story-card::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.72),
+    rgba(0,0,0,.35) 55%,
+    rgba(0,0,0,.08)
+  )!important;
+  z-index:2!important;
+}
+
+.story-card>div{
+  position:relative!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  padding:40px 48px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+
+.story-card .eyebrow{
+  color:#fff!important;
+  text-shadow:0 2px 7px #000!important;
+}
+
+.story-card h2{
+  color:#fff!important;
+  font-size:35px!important;
+  text-shadow:0 2px 10px #000!important;
+}
+
+.story-card h2 em{
+  color:#ffd65a!important;
+}
+
+.story-card p:not(.eyebrow){
+  color:#fff!important;
+  text-shadow:0 2px 7px #000!important;
+}
+
+.story-card .dark-button{
+  background:#fff!important;
+  color:#171717!important;
+}
+
+/* ---------- MOBILE ---------- */
+
+@media(max-width:800px){
+
+  .campaign-banner{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .campaign-banner>div:first-child{
+    padding:25px 22px!important;
+    justify-content:flex-end!important;
+    padding-bottom:28px!important;
+  }
+
+  .campaign-banner h2{
+    font-size:27px!important;
+  }
+
+  .campaign-banner p:not(.eyebrow){
+    max-width:70%!important;
+    font-size:11px!important;
+  }
+
+  .campaign-banner .campaign-stamp{
+    width:88px!important;
+    height:88px!important;
+    right:14px!important;
+    bottom:17px!important;
+    font-size:10px!important;
+  }
+
+  .campaign-banner .campaign-stamp b{
+    font-size:19px!important;
+  }
+
+  .ad-grid,
+  .gift-grid{
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+
+  .ad-card{
+    height:210px!important;
+    min-height:210px!important;
+  }
+
+  .gift-card{
+    height:230px!important;
+    min-height:230px!important;
+  }
+
+  .story-card{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .story-card>div{
+    padding:28px 23px!important;
+    justify-content:flex-end!important;
+    padding-bottom:28px!important;
+  }
+
+  .story-card h2{
+    font-size:27px!important;
+  }
+
+  .story-card p:not(.eyebrow){
+    font-size:11px!important;
+    max-width:75%!important;
+  }
+}
+
+
+/* ============================================================
+   ZIYANA - MAKE ALL PROMOTIONAL BANNERS SAME LARGE SIZE
+   ============================================================ */
+
+/* Same large size for every promotional banner */
+.campaign-banner,
+.gift-card,
+.ad-card,
+.story-card{
+  width:100%!important;
+  height:320px!important;
+  min-height:320px!important;
+}
+
+/* Keep all images filling the same large canvas */
+.campaign-banner .campaign-visual,
+.campaign-banner .campaign-visual>img,
+.gift-card img,
+.ad-card img,
+.story-card>img{
+  width:100%!important;
+  height:100%!important;
+}
+
+/* Gift cards use the same large dimensions */
+.gift-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+
+/* Special campaign cards also become large */
+.ad-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+
+/* Mobile: still large, but not excessively tall */
+@media(max-width:800px){
+  .campaign-banner,
+  .gift-card,
+  .ad-card,
+  .story-card{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .gift-grid,
+  .ad-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
+
+/* =========================================================
+   FORCE FREE GIFT + MAIN ZIYANA CAMPAIGN TO LARGE SIZE
+   ========================================================= */
+
+/* FREE GIFT */
+.gift-grid .gift-card{
+  width:100%!important;
+  height:320px!important;
+  min-height:320px!important;
+  max-height:none!important;
+}
+
+/* Main ZIYANA campaign */
+.campaign-banner{
+  width:100%!important;
+  height:320px!important;
+  min-height:320px!important;
+  max-height:none!important;
+}
+
+/* Make their images fill the entire large banner */
+.gift-grid .gift-card img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+}
+
+.campaign-banner .campaign-visual,
+.campaign-banner .campaign-visual img{
+  width:100%!important;
+  height:100%!important;
+}
+
+/* Keep text vertically positioned nicely */
+.gift-grid .gift-card>div{
+  height:100%!important;
+  min-height:320px!important;
+  box-sizing:border-box!important;
+}
+
+.campaign-banner>div:first-child{
+  height:100%!important;
+  box-sizing:border-box!important;
+}
+
+/* Mobile */
+@media(max-width:800px){
+  .gift-grid .gift-card{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .gift-grid .gift-card>div{
+    min-height:300px!important;
+  }
+
+  .campaign-banner{
+    height:300px!important;
+    min-height:300px!important;
+  }
+}
+
+
+/* ==========================================================
+   FINAL FIX — FREE GIFT + ZIYANA MAIN CAMPAIGN
+   SAME FULL-WIDTH LARGE BANNER
+   ========================================================== */
+
+/* FREE GIFT SECTION: only one large card per row */
+.gift-section .gift-grid{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}
+
+/* Free gift becomes full width */
+.gift-section .gift-card{
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  max-width:none!important;
+  height:320px!important;
+  min-height:320px!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+/* Gift image fills entire banner */
+.gift-section .gift-card img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  z-index:1!important;
+}
+
+/* Gift dark overlay */
+.gift-section .gift-card::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.68) 0%,
+    rgba(0,0,0,.35) 55%,
+    rgba(0,0,0,.05) 100%
+  )!important;
+}
+
+/* Gift text */
+.gift-section .gift-card>div{
+  position:absolute!important;
+  inset:0!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:35px 48px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+}
+
+.gift-section .gift-card h3{
+  color:#fff!important;
+  font-size:28px!important;
+  text-shadow:0 2px 10px rgba(0,0,0,.6)!important;
+}
+
+.gift-section .gift-card p,
+.gift-section .gift-card small{
+  color:#fff!important;
+  text-shadow:0 2px 7px rgba(0,0,0,.6)!important;
+}
+
+/* ==========================================================
+   MAIN ZIYANA CAMPAIGN — FORCE FULL LARGE SIZE
+   ========================================================== */
+
+.campaign-band .campaign-banner{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  height:320px!important;
+  min-height:320px!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+/* Full image */
+.campaign-band .campaign-visual{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:none!important;
+  z-index:1!important;
+}
+
+.campaign-band .campaign-visual>img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+}
+
+/* Campaign text layer */
+.campaign-band .campaign-banner>div:first-child{
+  position:relative!important;
+  z-index:5!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  box-sizing:border-box!important;
+  padding:35px 48px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+}
+
+/* Mobile */
+@media(max-width:800px){
+
+  .gift-section .gift-card{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .gift-section .gift-card>div{
+    padding:25px 22px!important;
+  }
+
+  .gift-section .gift-card h3{
+    font-size:24px!important;
+  }
+
+  .campaign-band .campaign-banner{
+    height:300px!important;
+    min-height:300px!important;
+  }
+
+  .campaign-band .campaign-banner>div:first-child{
+    padding:25px 22px!important;
+  }
+}
+
+
+/* ==========================================================
+   FINAL — ZIYANA SHOP CAMPAIGN FORCE LARGE
+   ========================================================== */
+
+.deal-band#campaign{
+  width:100%!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+
+.deal-band#campaign > .section{
+  width:100%!important;
+  max-width:none!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  margin:0!important;
+}
+
+.deal-band#campaign .campaign-banner{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  height:360px!important;
+  min-height:360px!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+/* Full campaign image */
+.deal-band#campaign .campaign-visual{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:none!important;
+  display:block!important;
+}
+
+.deal-band#campaign .campaign-visual img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+}
+
+/* Campaign text */
+.deal-band#campaign .campaign-banner > div:first-child{
+  position:relative!important;
+  z-index:10!important;
+  width:100%!important;
+  height:100%!important;
+  padding:40px 55px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+}
+
+/* Bigger campaign heading */
+.deal-band#campaign .campaign-banner h2{
+  font-size:42px!important;
+  line-height:1.08!important;
+}
+
+/* Mobile */
+@media(max-width:800px){
+  .deal-band#campaign .campaign-banner{
+    height:320px!important;
+    min-height:320px!important;
+  }
+
+  .deal-band#campaign .campaign-banner > div:first-child{
+    padding:28px 22px!important;
+  }
+
+  .deal-band#campaign .campaign-banner h2{
+    font-size:29px!important;
+  }
 }
 
