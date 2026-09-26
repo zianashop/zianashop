@@ -5613,3 +5613,113 @@ body.ziyana-route-active .modal[hidden]{display:none!important}
 body.ziyana-route-active .modal-close{position:fixed!important;top:14px!important;right:18px!important;z-index:10030!important}
 body.ziyana-route-active #overlay{display:none!important}
 @media(max-width:700px){body.ziyana-route-active .modal:not([hidden]){padding:62px 14px 24px!important}}
+
+/* Fixed-size promotional slides; New Arrivals stays outside the carousel. */
+#promoMasterSlider .promo-slide{
+  box-sizing:border-box!important;
+  height:250px!important;
+  min-height:250px!important;
+  max-height:250px!important;
+  overflow:hidden!important;
+}
+#promoMasterSlider .promo-slide>section{
+  box-sizing:border-box!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+#promoMasterSlider .special-campaigns:before{
+  display:none!important;
+  content:none!important;
+}
+#promoMasterSlider .gift-card,
+#promoMasterSlider .campaign-banner,
+#promoMasterSlider .ad-card,
+#promoMasterSlider .story-card{
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  overflow:hidden!important;
+}
+#promoMasterSlider .gift-card>img,
+#promoMasterSlider .campaign-visual,
+#promoMasterSlider .campaign-visual>img,
+#promoMasterSlider .ad-card>img,
+#promoMasterSlider .story-card>img{
+  box-sizing:border-box!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  object-fit:cover!important;
+}
+@media(max-width:800px){
+  #promoMasterSlider .promo-slide{
+    height:220px!important;
+    min-height:220px!important;
+    max-height:220px!important;
+  }
+}
+
+/* Stable dimensions for every master-slider slide */
+#promoMasterSlider .promo-slide,
+#promoMasterSlider .promo-slide > section,
+#promoMasterSlider .promo-slide > section > .section,
+#promoMasterSlider .promo-generated-slide .gift-grid,
+#promoMasterSlider .promo-generated-slide .ad-grid{
+  box-sizing:border-box!important;
+  height:250px!important;
+  min-height:250px!important;
+  max-height:250px!important;
+  overflow:hidden!important;
+}
+#promoMasterSlider .special-campaigns:before{
+  display:none!important;
+  content:none!important;
+}
+#promoMasterSlider .gift-card,
+#promoMasterSlider .campaign-banner,
+#promoMasterSlider .ad-card,
+#promoMasterSlider .story-card{
+  box-sizing:border-box!important;
+  height:250px!important;
+  min-height:250px!important;
+  max-height:250px!important;
+  overflow:hidden!important;
+}
+#promoMasterSlider .gift-card>img,
+#promoMasterSlider .campaign-visual,
+#promoMasterSlider .campaign-visual>img,
+#promoMasterSlider .ad-card>img,
+#promoMasterSlider .story-card>img{
+  box-sizing:border-box!important;
+  height:250px!important;
+  min-height:250px!important;
+  max-height:250px!important;
+  object-fit:cover!important;
+}
+@media(max-width:800px){
+  #promoMasterSlider .promo-slide,
+  #promoMasterSlider .promo-slide > section,
+  #promoMasterSlider .promo-slide > section > .section,
+  #promoMasterSlider .promo-generated-slide .gift-grid,
+  #promoMasterSlider .promo-generated-slide .ad-grid,
+  #promoMasterSlider .gift-card,
+  #promoMasterSlider .campaign-banner,
+  #promoMasterSlider .ad-card,
+  #promoMasterSlider .story-card,
+  #promoMasterSlider .gift-card>img,
+  #promoMasterSlider .campaign-visual,
+  #promoMasterSlider .campaign-visual>img,
+  #promoMasterSlider .ad-card>img,
+  #promoMasterSlider .story-card>img{
+    height:220px!important;
+    min-height:220px!important;
+    max-height:220px!important;
+  }
+}
