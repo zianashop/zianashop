@@ -5723,3 +5723,56 @@ body.ziyana-route-active #overlay{display:none!important}
     max-height:220px!important;
   }
 }
+
+/* Shared Ziyana Fashion SVG logo */
+.brand-logo-link{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex:none!important;
+  width:108px!important;
+  height:70px!important;
+  overflow:hidden!important;
+}
+.brand-logo-img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.footer-brand.brand-logo-link{
+  width:130px!important;
+  height:108px!important;
+}
+.checkout-page-brand{
+  width:100px!important;
+  height:84px!important;
+  overflow:hidden!important;
+}
+@media(max-width:800px){
+  .brand-logo-link{width:78px!important;height:64px!important}
+  .footer-brand.brand-logo-link{width:112px!important;height:94px!important}
+}
+
+/* Shared Ziyana brand logo: contrast variants */
+.brand-logo-link{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex:none!important;width:108px!important;height:70px!important;overflow:hidden!important;
+}
+.brand-logo-img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important}
+.logo-on-light{filter:brightness(.22) saturate(1.5) contrast(1.15)!important}
+.logo-on-dark{filter:none!important}
+.footer-brand.brand-logo-link{width:130px!important;height:108px!important}
+.checkout-page-brand{width:100px!important;height:84px!important;overflow:hidden!important}
+.shared-modal-brand{
+  display:flex;align-items:center;justify-content:center;height:76px;margin:0 0 14px;
+  background:#fff;border-bottom:1px solid #e2e5dc;
+}
+.shared-modal-brand img{width:92px;height:72px;object-fit:contain}
+#adminModal>.shared-modal-brand{background:#202321;border-color:#ffffff30}
+#adminModal>.shared-modal-brand img{filter:none!important}
+@media(max-width:800px){
+  .brand-logo-link{width:82px!important;height:64px!important}
+  .footer-brand.brand-logo-link{width:112px!important;height:94px!important}
+}

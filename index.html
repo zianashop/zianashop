@@ -7,12 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=slider-layout-2" />
+    <link rel="stylesheet" href="style.css?v=shared-brand-1" />
   </head>
   <body>
 <header class="site-header">
       <div class="header-main container">
-        <a class="brand" href="#top" aria-label="Ziyana Shop home"><span class="brand-mark">Z</span><span>ziyana<span>shop</span></span></a>
+        <a class="brand brand-logo-link" href="#top" aria-label="Ziyana Fashion home"><img class="brand-logo-img logo-on-light" src="ziyana-logo.svg?v=1" alt="Ziyana Fashion"></a>
         <div class="search-wrap">
           <input id="searchInput" type="search" placeholder="আপনি কী খুঁজছেন?" aria-label="Search products" />
           <button id="searchButton" class="search-button" aria-label="Search">⌕</button>
@@ -64,7 +64,7 @@
 </div>
 </main>
 
-    <footer id="help"><div class="container footer-inner"><div><a class="brand footer-brand" href="#top"><span class="brand-mark">Z</span><span>ziyana<span>shop</span></span></a><p>আপনার everyday shopping, আরও সুন্দর করে।</p></div><div><b>কাস্টমার কেয়ার</b><a href="#help" data-info-page="help">সাহায্য কেন্দ্র</a><a href="#help" data-info-page="returns">রিটার্ন পলিসি</a><a href="#help" data-action="order-tracker">Order Tracker</a></div><div><b>আমাদের সাথে থাকুন</b><a href="#categories" data-action="mall-products">Ziyana Shop</a></div><div><b>অ্যাপ ডাউনলোড করুন</b><span class="app-badge"> App Store</span><span class="app-badge">▶ Google Play</span></div></div><div class="copyright container">© 2026 Ziyana Shop · Made for Bangladesh</div></footer>
+    <footer id="help"><div class="container footer-inner"><div><a class="brand footer-brand brand-logo-link" href="#top" aria-label="Ziyana Fashion home"><img class="brand-logo-img logo-on-dark" src="ziyana-logo.svg?v=1" alt="Ziyana Fashion"></a><p>আপনার everyday shopping, আরও সুন্দর করে।</p></div><div><b>কাস্টমার কেয়ার</b><a href="#help" data-info-page="help">সাহায্য কেন্দ্র</a><a href="#help" data-info-page="returns">রিটার্ন পলিসি</a><a href="#help" data-action="order-tracker">Order Tracker</a></div><div><b>আমাদের সাথে থাকুন</b><a href="#categories" data-action="mall-products">Ziyana Shop</a></div><div><b>অ্যাপ ডাউনলোড করুন</b><span class="app-badge"> App Store</span><span class="app-badge">▶ Google Play</span></div></div><div class="copyright container">© 2026 Ziyana Shop · Made for Bangladesh</div></footer>
 
     <div class="overlay" id="overlay" hidden></div>
     <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart"><div class="drawer-head"><h2>আপনার ব্যাগ <span id="drawerCount">0</span></h2><button id="closeCart" aria-label="Close cart">×</button></div><div id="cartItems" class="cart-items"><div class="empty-cart"><span>🛍</span><h3>আপনার ব্যাগ খালি</h3><p>পছন্দের পণ্যগুলো এখানে জমা হবে।</p></div></div><div class="cart-footer"><div><span>সাবটোটাল</span><strong id="cartTotal">৳০</strong></div><button class="primary-button checkout-button">চেকআউট করুন <span>→</span></button></div></aside>
@@ -78,8 +78,9 @@
     <div class="toast" id="toast">পণ্যটি আপনার ব্যাগে যোগ হয়েছে ✓</div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=page-routes-1"></script>
+    <script src="app.js?v=shared-brand-1"></script>
     <script src="slider-layout-fix.js?v=1"></script>
     <script src="route-pages.js?v=1"></script>
+    <script src="brand-views.js?v=1"></script>
   </body>
 </html>
