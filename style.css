@@ -5604,3 +5604,12 @@ body.checkout-page-active #checkoutForm.checkout-layout > .checkout-summary {
 #promoMasterSlider .promo-slider-dots button{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.65);cursor:pointer}
 #promoMasterSlider .promo-slider-dots button.active{width:26px;border-radius:20px;background:#fff}
 @media(max-width:700px){#promoMasterSlider{margin:16px 0}#promoMasterSlider .promo-slider-arrow{width:36px;height:36px;font-size:24px}}
+
+/* Full-page URL views */
+body.ziyana-route-active{overflow:hidden!important}
+body.ziyana-route-active>header,body.ziyana-route-active>main,body.ziyana-route-active>footer{display:none!important}
+body.ziyana-route-active .modal:not([hidden]){position:fixed!important;inset:0!important;left:0!important;top:0!important;transform:none!important;width:100vw!important;max-width:none!important;height:100vh!important;height:100dvh!important;max-height:none!important;margin:0!important;padding:72px clamp(16px,5vw,72px) 30px!important;border:0!important;border-radius:0!important;overflow:auto!important;display:block!important;z-index:10020!important;box-shadow:none!important}
+body.ziyana-route-active .modal[hidden]{display:none!important}
+body.ziyana-route-active .modal-close{position:fixed!important;top:14px!important;right:18px!important;z-index:10030!important}
+body.ziyana-route-active #overlay{display:none!important}
+@media(max-width:700px){body.ziyana-route-active .modal:not([hidden]){padding:62px 14px 24px!important}}
