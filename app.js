@@ -870,6 +870,102 @@ function renderOrders() {
 }
 
 function showGiftDetails(giftId) { const gift = gifts.find(item => item.id === Number(giftId)); if (!gift) return; const selected = products.filter(product => (gift.productIds || []).map(Number).includes(Number(product.id)) || (gift.giftCategory && productMatchesCategory(product, gift.giftCategory))); const cards = selected.map(product => `<article class="product-card"><div class="product-image"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}"><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>ব্যাগে যোগ করুন</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">FREE GIFT CAMPAIGN</p><h2>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h2><p>এই campaign-এর selected products কিনলে checkout-এ free gift পাবেন।</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
+
+
+
+function showNewArrivalProducts() {
+  const selectedIds = new Set(
+    (campaignSettings && Array.isArray(campaignSettings.productIds))
+      ? campaignSettings.productIds.map(Number)
+      : []
+  );
+
+  const selected = products.filter(product =>
+    selectedIds.has(Number(product.id))
+  );
+
+  const cards = selected.map(product => `
+    <article class="product-card">
+      <div class="product-image">
+        <img
+          src="${escapeHtml(product.image || '')}"
+          alt="${escapeHtml(product.name || '')}"
+        >
+        ${product.discount ? `<span class="discount">${escapeHtml(product.discount)}</span>` : ''}
+      </div>
+
+      <div class="product-info">
+        <h3>${escapeHtml(product.name || '')}</h3>
+
+        <div class="price">
+          <strong>${money(product.price)}</strong>
+          ${
+            product.old
+              ? `<span class="old-price">${money(product.old)}</span>`
+              : ''
+          }
+        </div>
+
+        <small class="stock-note">
+          ${
+            Number(product.stock) > 0
+              ? `${product.stock}টি স্টকে আছে`
+              : 'স্টক শেষ'
+          }
+        </small>
+
+        <div class="product-actions">
+          <button
+            class="add-button"
+            data-add="${product.id}"
+            ${Number(product.stock) < 1 ? 'disabled' : ''}
+          >
+            ব্যাগে যোগ করুন
+          </button>
+
+          <button
+            class="buy-now-button add-button"
+            data-buy-now="${product.id}"
+            ${Number(product.stock) < 1 ? 'disabled' : ''}
+          >
+            Buy now
+          </button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+
+  const content = $('#campaignViewContent');
+
+  if (!content) {
+    console.error('campaignViewContent not found');
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="campaign-view-header">
+      <p class="eyebrow coral">NEW ARRIVALS</p>
+      <h2>${escapeHtml(
+        campaignSettings?.title || 'Style refresh'
+      )}</h2>
+      <p>${escapeHtml(
+        campaignSettings?.text ||
+        'Fashion আর Beauty-তে special price, limited-time offers এবং নতুন season-এর favourites একসাথে।'
+      )}</p>
+    </div>
+
+    <div class="campaign-product-grid">
+      ${
+        cards ||
+        '<p class="empty-state">Admin panel থেকে New arrival products select করুন।</p>'
+      }
+    </div>
+  `;
+
+  openModal('campaignViewModal');
+}
+
+
 function showAdDetails(adId) { const ad = ads.find(item => item.id === Number(adId)); if (!ad) return; const selected = products.filter(product => (ad.productIds || []).map(Number).includes(Number(product.id)) || (ad.targetCategory && productMatchesCategory(product, ad.targetCategory))); const cards = selected.map(productMarkup).join(''); $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP CAMPAIGN</p><h2>${escapeHtml(ad.title)}</h2><p>${escapeHtml(ad.text)}</p></div><div class="campaign-product-grid">${cards || '<p class="empty-state">এই campaign-এ product select করা হয়নি।</p>'}</div>`; openModal('campaignViewModal'); }
 function showMallProducts() {
   const selectedIds = new Set((mallSettings.productIds || []).map(Number));
@@ -1143,7 +1239,15 @@ document.addEventListener('click', event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'logout' || action === 'admin-logout') { currentUser = null; write('laiba_current_user', null); closeModal(); showToast('লগআউট সম্পন্ন হয়েছে'); return; }
   if (action === 'order-tracker') { event.preventDefault(); return renderOrderTracker(); }
-  if (action === 'mall-products') { event.preventDefault(); return showMallProducts(); }
+
+
+if (action === 'new-arrival-products') {
+  event.preventDefault();
+  showNewArrivalProducts();
+  return;
+}
+
+if (action === 'mall-products') { event.preventDefault(); return showMallProducts(); }
   const infoPage = event.target.closest('[data-info-page]'); if (infoPage) { event.preventDefault(); return showInfoPage(infoPage.dataset.infoPage); }
   const buyNow = event.target.closest('[data-buy-now]'); if (buyNow) { event.preventDefault(); event.stopPropagation(); const product = products.find(item => item.id === Number(buyNow.dataset.buyNow)); if (!product || product.stock < 1) return showToast('এই পণ্যটি এখন স্টকে নেই'); addToCart(buyNow.dataset.buyNow); return window.openCheckout(); }
   if (action === 'open-admin') return renderAdmin(); if (action === 'my-orders') { if (currentUser?.role === 'admin') { accountOrderFilter = ''; renderOrders(); openModal('ordersModal'); return; } return renderCustomerDashboard(); } if (action === 'reset-password') { const password = `Laiba${String(currentUser.id).slice(-4)}`; currentUser.password = password; users = users.map(user => user.id === currentUser.id ? currentUser : user); saveState(); return showToast(`Default password: ${password}`); } if (action === 'toggle-ad-form') { $('#adForm').hidden = !$('#adForm').hidden; return; } if (action === 'apply-coupon') return applyCoupon(); if (action === 'remove-coupon') { appliedCoupon = null; renderCheckout(captureCheckoutDraft()); showToast('Coupon removed'); return; }
@@ -3643,3 +3747,27 @@ async function handleAdminOrderStatusChange(order, select) {
     }
   }, true);
 })();
+
+
+/* Ziyana Shop Featured Banner - Full Banner Click */
+document.addEventListener('click', function(e) {
+  const banner = e.target.closest('.story-card[data-action="mall-products"]');
+  if (!banner) return;
+
+  e.preventDefault();
+  if (typeof showMallProducts === 'function') {
+    showMallProducts();
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  const banner = e.target.closest('.story-card[data-action="mall-products"]');
+  if (!banner) return;
+
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (typeof showMallProducts === 'function') {
+      showMallProducts();
+    }
+  }
+});

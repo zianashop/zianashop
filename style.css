@@ -663,15 +663,7 @@
   padding:0!important;
 }
 
-.special-campaigns:before{
-  content:"SPECIAL CAMPAIGNS · WEEKEND EDITS";
-  display:block;
-  padding:14px 4vw 8px;
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:.14em;
-  color:var(--muted);
-}
+
 
 .ad-grid{
   width:100%!important;
@@ -5524,3 +5516,76 @@ body.checkout-page-active #checkoutForm.checkout-layout > .checkout-summary {
   }
 }
 
+
+
+/* New Arrival campaign banner */
+.campaign-banner[data-action="new-arrival-products"] {
+  cursor: pointer;
+}
+
+
+/* New Arrival homepage section is intentionally hidden.
+   Products are opened from the Special Campaign banner. */
+
+
+/* Special Campaign / New Arrival banner is clickable */
+.campaign-banner[data-action="new-arrival-products"] {
+  cursor: pointer;
+}
+
+
+/* ==========================================================
+   NEW ARRIVAL
+   Homepage products are hidden; banner remains visible.
+   Products open inside the campaign modal.
+   ========================================================== */
+
+#newArrivals {
+  display: none !important;
+}
+
+.campaign-banner[data-action="new-arrival-products"] {
+  cursor: pointer;
+}
+
+.campaign-banner[data-action="new-arrival-products"] img {
+  display: block;
+}
+
+.campaign-banner[data-action="new-arrival-products"] a {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* Special Campaign banner */
+.campaign-banner[data-action="new-arrival-products"] {
+  cursor: pointer;
+}
+
+.campaign-banner[data-action="new-arrival-products"] .campaign-visual {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.campaign-banner[data-action="new-arrival-products"] #campaignBannerImage {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+
+/* Ziyana Shop Featured Banner */
+.story-card[data-action="mall-products"] {
+  cursor: pointer !important;
+}
+
+.story-card[data-action="mall-products"]:hover {
+  cursor: pointer !important;
+}
+
+.story-card[data-action="mall-products"]:focus-visible {
+  outline: 3px solid var(--coral) !important;
+  outline-offset: 3px !important;
+}
