@@ -702,7 +702,17 @@ function renderCampaignBanner() { const title = $('#campaignBannerTitle'); const
 function renderHero() { const tagTop = $('#heroTagTop'); const tagBottom = $('#heroTagBottom'); const image = $('#heroBannerImage'); const cardTitle = $('#heroCardTitle'); const cardOffer = $('#heroCardOffer'); if (tagTop) tagTop.textContent = heroSettings.tagTop; if (tagBottom) tagBottom.textContent = heroSettings.tagBottom; if (image) { image.src = heroSettings.image; image.alt = heroSettings.cardTitle; } if (cardTitle) cardTitle.textContent = heroSettings.cardTitle; if (cardOffer) cardOffer.textContent = heroSettings.cardOffer; }
 function renderAds() { $('#adGrid').innerHTML = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date())).map(ad => `<article class="ad-card" data-ad-view="${ad.id}"><img src="${escapeHtml(ad.image)}" alt="${escapeHtml(ad.title)}" loading="lazy"><span><small>ZIYANA SHOP CAMPAIGN</small><b>${escapeHtml(ad.title)}</b><em>${escapeHtml(ad.text)}</em></span><strong>↗</strong></article>`).join(''); }
 function getPublicGift() { return gifts.find(gift => gift.active && (!gift.expiresAt || new Date(gift.expiresAt) > new Date())); }
-function renderGifts() { const gift = getPublicGift(); const stockLabel = gift?.stock > 0 ? `${gift.stock}টি gift stock বাকি` : 'Gift stock শেষ'; $('#giftGrid').innerHTML = gift ? `<article class="gift-card ${gift.stock > 0 ? '' : 'gift-out-of-stock'}" data-gift-view="${gift.id}"><img src="${escapeHtml(gift.image)}" alt="${escapeHtml(gift.title)}"><div><p class="eyebrow">FREE GIFT CAMPAIGN</p><h3>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h3><p>নির্বাচিত campaign, category বা product কিনলে checkout-এ free পাবেন।</p><small>${stockLabel} · বিস্তারিত দেখতে ক্লিক করুন</small></div><strong>↗</strong></article>` : '<p class="empty-state">এই মুহূর্তে কোনো free gift campaign নেই।</p>'; }
+function renderGifts() {
+  const activeGifts = gifts.filter(gift =>
+    gift.active && (!gift.expiresAt || new Date(gift.expiresAt) > new Date())
+  );
+  const cards = activeGifts.map(gift => {
+    const stockLabel = gift.stock > 0 ? `${gift.stock}টি gift stock বাকি` : 'Gift stock শেষ';
+    return `<article class="gift-card ${gift.stock > 0 ? '' : 'gift-out-of-stock'}" data-gift-view="${gift.id}"><img src="${escapeHtml(gift.image)}" alt="${escapeHtml(gift.title)}"><div><p class="eyebrow">FREE GIFT CAMPAIGN</p><h3>${escapeHtml(gift.title)} × ${gift.quantity || 1}</h3><p>নির্বাচিত campaign, category বা product কিনলে checkout-এ free পাবেন।</p><small>${stockLabel} · বিস্তারিত দেখতে ক্লিক করুন</small></div><strong>↗</strong></article>`;
+  });
+  $('#giftGrid').innerHTML = cards.join('') ||
+    '<p class="empty-state">এই মুহূর্তে কোনো free gift campaign নেই।</p>';
+}
 function getCampaignProducts() {
   const activeAds = ads.filter(ad => ad.active && (!ad.expiresAt || new Date(ad.expiresAt) > new Date()));
   const ids = new Set(activeAds.flatMap(ad => ad.productIds || []).map(Number));
@@ -1497,99 +1507,7 @@ if (!window.__categoryFloatingMouseGuardBound) {
   });
 }
 
-/* AUTO SLIDE MULTIPLE CAMPAIGNS */
-if (!window.__campaignAutoSliderBound) {
-  window.__campaignAutoSliderBound = true;
-
-  const sliderTimers = new WeakMap();
-
-  const setupCampaignSlider = (selector) => {
-    document.querySelectorAll(selector).forEach(container => {
-      const items = [...container.children].filter(item => item.nodeType === 1);
-
-      if (!items.length) return;
-
-      const oldTimer = sliderTimers.get(container);
-      if (oldTimer) clearInterval(oldTimer);
-
-      /*
-       * IMPORTANT:
-       * Every campaign card gets exactly the same large width/height.
-       */
-      container.style.display = 'flex';
-      container.style.flexDirection = 'row';
-      container.style.flexWrap = 'nowrap';
-      container.style.width = '100%';
-      container.style.maxWidth = '100%';
-      container.style.overflowX = 'auto';
-      container.style.overflowY = 'hidden';
-      container.style.scrollBehavior = 'smooth';
-      container.style.scrollSnapType = 'x mandatory';
-      container.style.gap = '0';
-
-      items.forEach(item => {
-        item.style.boxSizing = 'border-box';
-        item.style.flex = '0 0 100%';
-        item.style.width = '100%';
-        item.style.minWidth = '100%';
-        item.style.maxWidth = '100%';
-        item.style.height = window.innerWidth <= 800 ? '220px' : '250px';
-        item.style.minHeight = window.innerWidth <= 800 ? '220px' : '250px';
-        item.style.maxHeight = window.innerWidth <= 800 ? '220px' : '250px';
-        item.style.scrollSnapAlign = 'start';
-        item.style.overflow = 'hidden';
-
-        const image = item.querySelector('img');
-
-        if (image) {
-          image.style.width = '100%';
-          image.style.height = window.innerWidth <= 800 ? '220px' : '250px';
-          image.style.minHeight = window.innerWidth <= 800 ? '220px' : '250px';
-          image.style.maxHeight = window.innerWidth <= 800 ? '220px' : '250px';
-          image.style.objectFit = 'cover';
-        }
-      });
-
-      if (items.length < 2) {
-        sliderTimers.delete(container);
-        return;
-      }
-
-      const timer = setInterval(() => {
-        const maxScroll = container.scrollWidth - container.clientWidth;
-
-        if (container.scrollLeft >= maxScroll - 5) {
-          container.scrollTo({
-            left: 0,
-            behavior: 'smooth'
-          });
-        } else {
-          container.scrollBy({
-            left: container.clientWidth,
-            behavior: 'smooth'
-          });
-        }
-      }, 1500);
-
-      sliderTimers.set(container, timer);
-    });
-  };
-
-  const refreshCampaignSliders = () => {
-    setupCampaignSlider('#adGrid');
-    setupCampaignSlider('#giftGrid');
-  };
-
-  refreshCampaignSliders();
-
-  const observer = new MutationObserver(refreshCampaignSliders);
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-
-  window.addEventListener('resize', refreshCampaignSliders);
-}
+/* Legacy Gift/Ad auto-slider removed; the master slider handles these cards. */
 
 /* ADMIN TILE -> EDITOR POPUP */
 
@@ -3771,3 +3689,112 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+
+/* DYNAMIC ZIYANA PROMOTIONAL MASTER SLIDER */
+(function () {
+  "use strict";
+  function init() {
+    const slider = document.getElementById("promoMasterSlider");
+    if (!slider || slider.dataset.sliderReady === "true") return;
+    const track = slider.querySelector(".promo-slider-track");
+    const dotsHost = slider.querySelector(".promo-slider-dots");
+    const giftSource = document.getElementById("giftGrid");
+    const adSource = document.getElementById("adGrid");
+    const giftSection = document.getElementById("gifts");
+    const adSection = document.getElementById("campaignAdsSource");
+    if (!track || !dotsHost || !giftSource || !adSource || !giftSection || !adSection) {
+      console.error("[ZIYANA] Slider source missing");
+      return;
+    }
+    slider.dataset.sliderReady = "true";
+    let slides = [], current = 0, timer = null, touchStartX = 0;
+    const giftHeading = giftSection.querySelector(".section-heading");
+    const adHeading = adSection.querySelector(".section-heading");
+
+    function makeSlide(kind, card, key, heading, empty) {
+      const article = document.createElement("article");
+      article.className = "promo-slide promo-generated-slide";
+      article.dataset.promoKey = key;
+      const section = document.createElement("section");
+      section.className = kind === "gift" ? "section container gift-section" : "special-campaigns";
+      if (heading) section.appendChild(heading.cloneNode(true));
+      const grid = document.createElement("div");
+      grid.className = kind === "gift" ? "gift-grid" : "ad-grid";
+      if (card) grid.appendChild(card.cloneNode(true));
+      else if (empty) grid.appendChild(empty.cloneNode(true));
+      section.appendChild(grid);
+      article.appendChild(section);
+      return article;
+    }
+
+    function show(index, animate = true) {
+      if (!slides.length) return;
+      current = (index + slides.length) % slides.length;
+      track.style.transition = animate ? "transform 500ms ease" : "none";
+      track.style.transform = `translate3d(-${current * 100}%,0,0)`;
+      slides.forEach((s, i) => s.setAttribute("aria-hidden", i === current ? "false" : "true"));
+      [...dotsHost.children].forEach((d, i) => {
+        d.classList.toggle("active", i === current);
+        d.setAttribute("aria-current", i === current ? "true" : "false");
+      });
+    }
+
+    function restart() {
+      clearInterval(timer);
+      timer = setInterval(() => show(current + 1), 5000);
+    }
+
+    function rebuild() {
+      const oldKey = slides[current]?.dataset.promoKey || slides[current]?.dataset.promoStatic;
+      track.querySelectorAll("[data-promo-dynamic]").forEach(s => s.remove());
+      const gifts = [...giftSource.children].filter(x => x.matches(".gift-card"));
+      const emptyGift = giftSource.querySelector(".empty-state");
+      const ads = [...adSource.children].filter(x => x.matches(".ad-card"));
+      const giftSlides = gifts.length
+        ? gifts.map(card => makeSlide("gift", card, `gift:${card.dataset.giftView}`, giftHeading))
+        : [makeSlide("gift", null, "gift:empty", giftHeading, emptyGift)];
+      const adSlides = ads.map(card => makeSlide("ad", card, `ad:${card.dataset.adView}`, adHeading));
+      const campaign = track.querySelector('[data-promo-static="campaign"]');
+      const mall = track.querySelector('[data-promo-static="mall"]');
+      giftSlides.forEach(s => { s.dataset.promoDynamic = "gift"; track.insertBefore(s, campaign); });
+      adSlides.forEach(s => { s.dataset.promoDynamic = "ad"; track.insertBefore(s, mall); });
+      slides = [...track.querySelectorAll(".promo-slide")];
+      dotsHost.replaceChildren(...slides.map((_, i) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+        dot.addEventListener("click", () => { show(i); restart(); });
+        return dot;
+      }));
+      const keep = slides.findIndex(s => (s.dataset.promoKey || s.dataset.promoStatic) === oldKey);
+      show(keep < 0 ? 0 : keep, false);
+      restart();
+      console.log(`[ZIYANA] Master slider ready: ${slides.length} slides`);
+    }
+
+    slider.querySelector(".promo-slider-next")?.addEventListener("click", () => { show(current + 1); restart(); });
+    slider.querySelector(".promo-slider-prev")?.addEventListener("click", () => { show(current - 1); restart(); });
+    slider.addEventListener("mouseenter", () => clearInterval(timer));
+    slider.addEventListener("mouseleave", restart);
+    slider.addEventListener("touchstart", e => { touchStartX = e.changedTouches[0].clientX; clearInterval(timer); }, {passive:true});
+    slider.addEventListener("touchend", e => {
+      const delta = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(delta) > 50) show(current + (delta > 0 ? 1 : -1));
+      restart();
+    }, {passive:true});
+
+    let queued = false;
+    const observer = new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; rebuild(); });
+    });
+    observer.observe(giftSource, {childList:true});
+    observer.observe(adSource, {childList:true});
+    rebuild();
+  }
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", init, {once:true});
+  else init();
+})();
