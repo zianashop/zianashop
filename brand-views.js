@@ -8,7 +8,7 @@
     row.className = 'shared-modal-brand';
     const image = document.createElement('img');
     image.className = 'brand-logo-img ' + (modal.id === 'adminModal' ? 'logo-on-dark' : 'logo-on-light');
-    image.src = 'ziyana-logo.svg?v=1';
+    image.src = (modal.id === 'adminModal' ? 'ziyana-logo-dark.svg?v=20260927' : 'ziyana-logo-light.svg?v=20260927');
     image.alt = 'Ziyana Fashion';
     row.appendChild(image);
     modal.prepend(row);
