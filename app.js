@@ -991,7 +991,7 @@ function showMallProducts() {
 }
 function showInfoPage(page) {
   if (page === 'returns') {
-    $('#infoContent').innerHTML = `<div class="info-page"><p class="eyebrow">RETURN & EXCHANGE</p><h2>রিটার্ন ও এক্সচেঞ্জ</h2><p>যোগ্যতা, refund এবং exchange-এর নিয়ম আলাদা page-এ দেখুন।</p><a class="primary-button" href="./return-exchange.html">নীতিমালা দেখুন</a></div>`;
+    $('#infoContent').innerHTML = `<div class="info-page"><p class="eyebrow">RETURN & EXCHANGE</p><h2>রিটার্ন ও এক্সচেঞ্জ</h2><p>যোগ্যতা ও নিয়ম আলাদা page-এ দেখুন।</p><a class="primary-button" href="./return-exchange.html">নীতিমালা দেখুন</a></div>`;
     openModal('infoModal');
     return;
   }
@@ -1006,40 +1006,133 @@ function showInfoPage(page) {
       <a href="#helpRequestForm"><b>03</b><span>সঠিক তথ্য দিয়ে request পাঠান</span></a>
     </div>
     <form id="helpRequestForm" class="help-request-form">
-      <label>Order ID <input name="orderId" required autocomplete="off" placeholder="আপনার Order ID"></label>
-      <label>Mobile number <input name="mobile" required type="tel" autocomplete="tel" placeholder="অর্ডারে দেওয়া mobile number"></label>
-      <label>বিষয়
-        <select name="topic" required>
-          <option value="">একটি বিষয় বাছুন</option>
-          <option>Order tracking</option><option>Delivery</option>
-          <option>Payment</option><option>Return or exchange</option><option>Other</option>
-        </select>
-      </label>
-      <label>বিস্তারিত <textarea name="details" required maxlength="1000" placeholder="সমস্যাটি সংক্ষেপে লিখুন"></textarea></label>
-      <button class="primary-button" type="submit">WhatsApp-এ request তৈরি করুন</button>
-      <p id="helpRequestStatus" class="help-request-status" aria-live="polite">WhatsApp খুললে তথ্য দেখে Send চাপুন।</p>
+      <label>আপনার নাম<input name="name" required maxlength="120"></label>
+      <label>Mobile number<input name="phone" type="tel" required maxlength="40"></label>
+      <label>ঠিকানা<input name="address" required maxlength="500"></label>
+      <label>Order ID (থাকলে)<input name="order_id" maxlength="100"></label>
+      <label>বিষয়<select name="topic" required>
+        <option value="">বিষয় বাছুন</option><option>Order tracking</option>
+        <option>Delivery</option><option>Payment</option>
+        <option>Return or exchange</option><option>Other</option>
+      </select></label>
+      <label>আপনার প্রশ্ন<textarea name="details" required minlength="5" maxlength="2000"></textarea></label>
+      <div class="support-honeypot" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <button class="primary-button" type="submit">Admin-কে request পাঠান</button>
+      <p id="helpRequestStatus" aria-live="polite">Login ছাড়াই request পাঠাতে পারবেন।</p>
     </form>
   </div>`;
 
   const form = document.getElementById('helpRequestForm');
-  form?.addEventListener('submit', event => {
+  form?.addEventListener('submit', async event => {
     event.preventDefault();
-    const data = new FormData(form);
-    const message = [
-      'Ziyana Shop Support Request',
-      `Order ID: ${data.get('orderId')}`,
-      `Mobile: ${data.get('mobile')}`,
-      `বিষয়: ${data.get('topic')}`,
-      `বিস্তারিত: ${data.get('details')}`
-    ].join('\n');
-    const url = new URL('https://wa.me/8801721352962');
-    url.searchParams.set('text', message);
-    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+    const client = window.laibaSupabase;
     const status = document.getElementById('helpRequestStatus');
-    if (status) status.textContent = 'WhatsApp-এ request তৈরি হয়েছে। তথ্য দেখে Send চাপুন।';
+    const button = form.querySelector('button[type="submit"]');
+    if (!client) {
+      if (status) status.textContent = 'এখন request পাঠানো যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+      return;
+    }
+
+    const values = new FormData(form);
+    if (button) button.disabled = true;
+    if (status) status.textContent = 'Request পাঠানো হচ্ছে...';
+
+    try {
+      const {data, error} = await client.rpc('submit_anonymous_support_request', {
+        p_name: values.get('name'),
+        p_phone: values.get('phone'),
+        p_address: values.get('address'),
+        p_order_id: values.get('order_id') || '',
+        p_topic: values.get('topic'),
+        p_details: values.get('details'),
+        p_website: values.get('website') || ''
+      });
+
+      if (error) throw error;
+      if (data?.blocked) {
+        if (status) status.textContent = 'এই network থেকে ৩টি request পাঠানো হয়েছে। Admin clearance না পাওয়া পর্যন্ত নতুন request পাঠানো যাবে না।';
+        return;
+      }
+      if (!data?.ok) throw new Error('Request পাঠানো যায়নি।');
+
+      form.reset();
+      if (status) status.textContent = `Request admin inbox-এ গেছে। Reference: ${data.request_id}`;
+    } catch (error) {
+      console.error('Anonymous support request failed:', error);
+      if (status) status.textContent = 'Request পাঠানো যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।';
+    } finally {
+      if (button) button.disabled = false;
+    }
   });
 
   openModal('infoModal');
+}
+
+async function renderAnonymousSupportRequests() {
+  const box = document.querySelector('#adminMessageBox');
+  const client = window.laibaSupabase;
+  if (!box || !client || currentUser?.role !== 'admin') return;
+
+  const [requestResult, limitResult] = await Promise.all([
+    client.from('anonymous_support_requests')
+      .select('id,customer_name,phone,address,order_id,topic,details,ip_address,status,created_at')
+      .order('created_at', {ascending:false}).limit(100),
+    client.from('support_ip_limits')
+      .select('ip_address,request_count,blocked').eq('blocked', true)
+  ]);
+
+  const section = document.createElement('section');
+  section.className = 'anonymous-support-admin';
+  if (requestResult.error || limitResult.error) {
+    section.innerHTML = '<h3>Guest support requests</h3><p>Request list load হয়নি। Database policy যাচাই করুন।</p>';
+    box.appendChild(section);
+    return;
+  }
+
+  const requests = requestResult.data || [];
+  const blocked = limitResult.data || [];
+  section.innerHTML = `
+    <h3>Guest support requests (${requests.length})</h3>
+    ${blocked.length ? `<h4>Blocked IPs</h4>${blocked.map(item => `
+      <div class="support-ip-row"><span>${escapeHtml(item.ip_address)} · ${item.request_count} requests</span>
+      <button type="button" class="outline-button" data-clear-support-ip="${escapeHtml(item.ip_address)}">Clear block</button></div>`).join('')}` : '<p>No blocked IPs.</p>'}
+    ${requests.length ? requests.map(item => `
+      <article class="anonymous-support-request">
+        <b>${escapeHtml(item.customer_name)}</b>
+        <p>Phone: ${escapeHtml(item.phone)} · Order: ${escapeHtml(item.order_id || '—')}</p>
+        <p>Address: ${escapeHtml(item.address)}</p>
+        <p>Topic: ${escapeHtml(item.topic)}</p>
+        <p>${escapeHtml(item.details)}</p>
+        <small>IP: ${escapeHtml(item.ip_address)} · ${escapeHtml(item.created_at)}</small>
+      </article>`).join('') : '<p>No guest requests yet.</p>'}`;
+  box.appendChild(section);
+}
+
+if (!window.__anonymousSupportInboxWrapped) {
+  window.__anonymousSupportInboxWrapped = true;
+  const previousRenderAdminMessages = renderAdminMessages;
+  renderAdminMessages = async function(...args) {
+    await previousRenderAdminMessages.apply(this, args);
+    await renderAnonymousSupportRequests();
+  };
+
+  document.addEventListener('click', async event => {
+    const button = event.target.closest('[data-clear-support-ip]');
+    if (!button) return;
+    event.preventDefault();
+    button.disabled = true;
+    const {error} = await window.laibaSupabase.rpc(
+      'admin_clear_anonymous_support_ip',
+      {p_ip: button.dataset.clearSupportIp}
+    );
+    if (error) {
+      showToast('IP block clear হয়নি');
+      button.disabled = false;
+      return;
+    }
+    showToast('IP clearance দেওয়া হয়েছে');
+    await renderAdminMessages();
+  });
 }
 
 function renderOrderTracker() { $('#ordersContent').innerHTML = `<div class="info-page"><p class="eyebrow">ORDER TRACKER</p><h2>আপনার order কোথায়?</h2><p>Order number, mobile অথবা email দিয়ে খুঁজুন।</p><div class="track-row"><input id="publicTrackInput" placeholder="Order ID / mobile / email"><button class="primary-button" data-action="public-track-order">Track order</button></div><div id="publicTrackResult"></div></div>`; openModal('ordersModal'); }
