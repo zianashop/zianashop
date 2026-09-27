@@ -3237,7 +3237,7 @@ async function handleAdminOrderStatusChange(order, select) {
               data-checkout-back
             >← শপিংয়ে ফিরে যান</button>
 
-            <div class="checkout-page-brand"><img class="brand-logo-img logo-on-light checkout-logo-img" src="ziyana-logo.svg?v=1" alt="Ziyana Fashion"></div>
+            <div class="checkout-page-brand"><img class="brand-logo-img logo-on-light checkout-logo-img" src="ziyana-logo-light.svg?v=20260927" alt="Ziyana Fashion"></div>
           </div>
 
           <div id="checkoutPageContent"></div>

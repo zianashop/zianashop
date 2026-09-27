@@ -5776,3 +5776,14 @@ body.ziyana-route-active #overlay{display:none!important}
   .brand-logo-link{width:82px!important;height:64px!important}
   .footer-brand.brand-logo-link{width:112px!important;height:94px!important}
 }
+
+/* ZIYANA ANIMATED LOGO REFRESH 20260927 */
+.brand-logo-link{display:flex!important;align-items:center!important;justify-content:center!important;flex:none!important;overflow:hidden!important}
+.brand-logo-img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;filter:none!important;mix-blend-mode:normal!important}
+.brand-logo-img.logo-on-light,.brand-logo-img.logo-on-dark{filter:none!important}
+.footer-brand.brand-logo-link{width:130px!important;height:108px!important}
+.checkout-page-brand{display:flex!important;align-items:center!important;justify-content:center!important;min-height:88px!important}
+.checkout-page-brand .checkout-logo-img{width:100px!important;height:84px!important}
+.shared-modal-brand{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;margin:0 auto 14px!important}
+.shared-modal-brand .brand-logo-img{width:112px!important;height:94px!important}
+@media(max-width:800px){.brand-logo-link{width:82px!important;height:64px!important}.footer-brand.brand-logo-link{width:112px!important;height:94px!important}}
