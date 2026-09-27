@@ -1022,18 +1022,27 @@ function showInfoPage(page) {
     </form>
   </div>`;
 
-  const form = document.getElementById('helpRequestForm');
-  form?.addEventListener('submit', async event => {
+  if (!window.__anonymousSupportSubmitHandlerInstalled) {
+  window.__anonymousSupportSubmitHandlerInstalled = true;
+  document.addEventListener('submit', async event => {
+    const form = event.target;
+    if (!form || form.id !== 'helpRequestForm') return;
     event.preventDefault();
+
+    if (form.dataset.submitting === 'true') return;
+    form.dataset.submitting = 'true';
+
     const client = window.laibaSupabase;
     const status = document.getElementById('helpRequestStatus');
     const button = form.querySelector('button[type="submit"]');
+    const values = new FormData(form);
+
     if (!client) {
       if (status) status.textContent = 'এখন request পাঠানো যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+      form.dataset.submitting = 'false';
       return;
     }
 
-    const values = new FormData(form);
     if (button) button.disabled = true;
     if (status) status.textContent = 'Request পাঠানো হচ্ছে...';
 
@@ -1050,7 +1059,7 @@ function showInfoPage(page) {
 
       if (error) throw error;
       if (data?.blocked) {
-        if (status) status.textContent = 'এই network থেকে ৩টি request পাঠানো হয়েছে। Admin clearance না পাওয়া পর্যন্ত নতুন request পাঠানো যাবে না।';
+        if (status) status.textContent = 'এই network থেকে request limit পূর্ণ হয়েছে। Admin clearance প্রয়োজন।';
         return;
       }
       if (!data?.ok) throw new Error('Request পাঠানো যায়নি।');
@@ -1061,10 +1070,11 @@ function showInfoPage(page) {
       console.error('Anonymous support request failed:', error);
       if (status) status.textContent = 'Request পাঠানো যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।';
     } finally {
+      form.dataset.submitting = 'false';
       if (button) button.disabled = false;
     }
-  });
-
+  }, true);
+}
   openModal('infoModal');
 }
 
@@ -1075,36 +1085,50 @@ async function renderAnonymousSupportRequests() {
 
   const [requestResult, limitResult] = await Promise.all([
     client.from('anonymous_support_requests')
-      .select('id,customer_name,phone,address,order_id,topic,details,ip_address,status,created_at')
+      .select('id,customer_name,phone,address,order_id,topic,details,ip_address,status,created_at,seen_at')
       .order('created_at', {ascending:false}).limit(100),
     client.from('support_ip_limits')
-      .select('ip_address,request_count,blocked').eq('blocked', true)
+      .select('ip_address,request_count,blocked')
   ]);
 
   const section = document.createElement('section');
   section.className = 'anonymous-support-admin';
   if (requestResult.error || limitResult.error) {
-    section.innerHTML = '<h3>Guest support requests</h3><p>Request list load হয়নি। Database policy যাচাই করুন।</p>';
+    section.innerHTML = '<h3>Guest support</h3><p>Request list load হয়নি। Database policy যাচাই করুন।</p>';
     box.appendChild(section);
     return;
   }
 
   const requests = requestResult.data || [];
-  const blocked = limitResult.data || [];
+  const limits = new Map((limitResult.data || []).map(item => [String(item.ip_address), item]));
+  const unseen = requests.filter(item => !item.seen_at).length;
+
   section.innerHTML = `
-    <h3>Guest support requests (${requests.length})</h3>
-    ${blocked.length ? `<h4>Blocked IPs</h4>${blocked.map(item => `
-      <div class="support-ip-row"><span>${escapeHtml(item.ip_address)} · ${item.request_count} requests</span>
-      <button type="button" class="outline-button" data-clear-support-ip="${escapeHtml(item.ip_address)}">Clear block</button></div>`).join('')}` : '<p>No blocked IPs.</p>'}
-    ${requests.length ? requests.map(item => `
-      <article class="anonymous-support-request">
-        <b>${escapeHtml(item.customer_name)}</b>
-        <p>Phone: ${escapeHtml(item.phone)} · Order: ${escapeHtml(item.order_id || '—')}</p>
-        <p>Address: ${escapeHtml(item.address)}</p>
-        <p>Topic: ${escapeHtml(item.topic)}</p>
-        <p>${escapeHtml(item.details)}</p>
-        <small>IP: ${escapeHtml(item.ip_address)} · ${escapeHtml(item.created_at)}</small>
-      </article>`).join('') : '<p>No guest requests yet.</p>'}`;
+    <div class="anonymous-support-heading">
+      <h3>Guest support</h3><span>${unseen} unseen</span>
+    </div>
+    ${requests.length ? requests.map(item => {
+      const ip = String(item.ip_address || '');
+      const blocked = Boolean(limits.get(ip)?.blocked);
+      return `
+        <details class="anonymous-support-request ${item.seen_at ? 'is-seen' : 'is-unseen'}">
+          <summary>
+            <span><b>${escapeHtml(item.customer_name)}</b> · ${escapeHtml(item.topic)}</span>
+            <small>${item.seen_at ? 'Seen' : 'New'} · ${escapeHtml(item.created_at)}</small>
+          </summary>
+          <div class="support-request-details">
+            <p>Phone: ${escapeHtml(item.phone)} · Order: ${escapeHtml(item.order_id || '—')}</p>
+            <p>Address: ${escapeHtml(item.address)}</p>
+            <p>${escapeHtml(item.details)}</p>
+            <small>IP: ${escapeHtml(ip)} · ${limits.get(ip)?.request_count || 0} requests</small>
+            <div class="support-request-actions">
+              ${item.seen_at ? '' : `<button type="button" class="outline-button" data-support-seen="${escapeHtml(item.id)}">Mark seen</button>`}
+              <button type="button" class="outline-button" data-support-ip="${escapeHtml(ip)}" data-support-block="${blocked ? 'false' : 'true'}">${blocked ? 'Allow IP' : 'Block IP'}</button>
+            </div>
+          </div>
+        </details>`;
+    }).join('') : '<p>No guest requests yet.</p>'}
+  `;
   box.appendChild(section);
 }
 
@@ -1117,21 +1141,34 @@ if (!window.__anonymousSupportInboxWrapped) {
   };
 
   document.addEventListener('click', async event => {
-    const button = event.target.closest('[data-clear-support-ip]');
+    const seenButton = event.target.closest('[data-support-seen]');
+    const ipButton = event.target.closest('[data-support-ip]');
+    const button = seenButton || ipButton;
     if (!button) return;
+
     event.preventDefault();
     button.disabled = true;
-    const {error} = await window.laibaSupabase.rpc(
-      'admin_clear_anonymous_support_ip',
-      {p_ip: button.dataset.clearSupportIp}
-    );
-    if (error) {
-      showToast('IP block clear হয়নি');
+    const client = window.laibaSupabase;
+
+    const result = seenButton
+      ? await client.rpc('admin_mark_support_seen', {
+          p_request_id: button.dataset.supportSeen
+        })
+      : await client.rpc('admin_set_support_ip_blocked', {
+          p_ip: button.dataset.supportIp,
+          p_blocked: button.dataset.supportBlock === 'true'
+        });
+
+    if (result.error) {
+      showToast(seenButton ? 'Request seen করা যায়নি' : 'IP control update হয়নি');
       button.disabled = false;
       return;
     }
-    showToast('IP clearance দেওয়া হয়েছে');
+
+    showToast(seenButton ? 'Request seen হয়েছে' :
+      (button.dataset.supportBlock === 'true' ? 'IP block করা হয়েছে' : 'IP allow করা হয়েছে'));
     await renderAdminMessages();
+    await injectAdminMessageCard();
   });
 }
 
@@ -2491,33 +2528,39 @@ async function openAdminMessagesPanel() {
 
 async function injectAdminMessageCard() {
   const root = document.querySelector('#adminContent');
-  if (!root || root.querySelector('[data-admin-message-card]')) return;
-
   const client = window.laibaSupabase;
-  if (!client || !currentUser?.id || currentUser.role !== 'admin') return;
+  if (!root || !client || !currentUser?.id || currentUser.role !== 'admin') return;
 
-  const result = await client
-    .from('messages')
-    .select('id,sender_id,recipient_id,read_at')
-    .eq('recipient_id', currentUser.id)
-    .is('read_at', null);
+  const [messagesResult, requestsResult] = await Promise.all([
+    client.from('messages')
+      .select('id,sender_id,recipient_id,read_at')
+      .eq('recipient_id', currentUser.id)
+      .is('read_at', null),
+    client.from('anonymous_support_requests')
+      .select('id', { count: 'exact', head: true }).is('seen_at', null)
+  ]);
 
-  const unread = result.error ? 0 : (result.data || []).length;
+  const unreadMessages = messagesResult.error ? 0 : (messagesResult.data || []).length;
+  const guestRequests = requestsResult.error ? 0 : (requestsResult.count || 0);
+  const totalNotifications = unreadMessages + guestRequests;
 
-  const section = document.createElement('section');
-  section.className = 'admin-section admin-message-dashboard-card admin-dashboard-tile is-collapsed';
-  section.dataset.adminMessageCard = '1';
-  section.dataset.adminTileReady = '1';
+  let section = root.querySelector('[data-admin-message-card]');
+  if (!section) {
+    section = document.createElement('section');
+    section.className = 'admin-section admin-message-dashboard-card admin-dashboard-tile is-collapsed';
+    section.dataset.adminMessageCard = '1';
+    section.dataset.adminTileReady = '1';
+    section.innerHTML = `
+      <h3>Messages</h3>
+      <p class="admin-message-card-subtitle">Customer support inbox</p>
+      <span class="admin-message-unread" data-admin-message-unread></span>
+    `;
+    root.appendChild(section);
+  }
 
-  section.innerHTML = `
-    <h3>Messages</h3>
-    <p class="admin-message-card-subtitle">Customer support inbox</p>
-    <span class="admin-message-unread" data-admin-message-unread>${unread}</span>
-  `;
-
-  root.appendChild(section);
+  const badge = section.querySelector('[data-admin-message-unread]');
+  if (badge) badge.textContent = String(totalNotifications);
 }
-
 if (!window.__adminMessageDashboardWrapped) {
   window.__adminMessageDashboardWrapped = true;
 

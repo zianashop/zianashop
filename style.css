@@ -5839,3 +5839,47 @@ body.ziyana-route-active #overlay{display:none!important}
 .anonymous-support-request,.support-ip-row{padding:14px;margin:10px 0;border:1px solid #e3e5de;border-radius:10px;background:#fff}
 .support-ip-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .anonymous-support-request p{margin:6px 0;overflow-wrap:anywhere}
+
+
+/* Compact guest support inbox */
+.anonymous-support-admin{margin-top:18px;padding:14px;border:1px solid #e5e7df;border-radius:14px;background:#fff}
+.anonymous-support-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.anonymous-support-heading h3{margin:0 0 10px}
+.anonymous-support-request{border-top:1px solid #eceee8;padding:10px 2px}
+.anonymous-support-request summary{display:flex;justify-content:space-between;gap:12px;cursor:pointer}
+.anonymous-support-request summary small{color:#73786f}
+.anonymous-support-request.is-unseen summary b{color:#8b6815}
+.support-request-details{padding:8px 4px 2px}
+.support-request-details p{margin:7px 0}
+.support-request-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.support-request-actions button{padding:7px 11px}
+
+/* Slim footer with app downloads aligned right */
+#help .footer-inner{
+  display:grid;
+  grid-template-columns:minmax(145px,1.2fr) minmax(125px,.8fr) minmax(165px,1fr) minmax(125px,.75fr) minmax(150px,auto);
+  gap:16px;
+  align-items:start;
+  padding-top:22px;
+  padding-bottom:16px;
+}
+#help .footer-inner>div:last-child{
+  justify-self:end;
+  text-align:right;
+}
+#help .footer-inner .app-badge{
+  display:inline-flex;
+  margin:6px 0 0 8px;
+}
+#help .copyright{
+  padding-top:9px;
+  padding-bottom:10px;
+}
+@media(max-width:900px){
+  #help .footer-inner{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #help .footer-inner>div:last-child{justify-self:start;text-align:left}
+}
+@media(max-width:560px){
+  #help .footer-inner{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding-top:18px}
+  #help .footer-inner>div:first-child{grid-column:1/-1}
+}
