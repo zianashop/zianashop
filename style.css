@@ -6728,3 +6728,22 @@ body.ziyana-route-active #overlay{display:none!important}
 #adminModal .category-management-inline.is-collapsed>.category-admin-tools{
   display:none!important;
 }
+
+
+/* CATEGORY TILE SIZE AND GRID ALIGNMENT 20260928 */
+#adminModal #adminContent > .category-management-inline{
+  grid-column:auto!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:118px!important;
+  margin:0!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
+}
+#adminModal #adminContent > .category-management-inline.is-collapsed{
+  height:118px!important;
+}
+#adminModal #adminContent > .category-management-inline h3{
+  margin:0!important;
+}
