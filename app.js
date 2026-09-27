@@ -829,7 +829,7 @@ function getCampaignProducts() {
   const unique = new Map(managed.map(product => [Number(product.id), product]));
   return unique.size ? [...unique.values()] : products;
 }
-function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" style="${productImageFitStyle(product, 'home')}"><button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
+function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card" data-product-id="${product.id}"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" style="${productImageFitStyle(product, 'home')}"><button class="wishlist ${isFavoriteProduct(product.id) ? 'active' : ''}" data-favorite-id="${product.id}" aria-label="Toggle favorite" aria-pressed="${isFavoriteProduct(product.id)}">${isFavoriteProduct(product.id) ? '♥' : '♡'}</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
 function renderNewArrivals() { const selectedIds = new Set((campaignSettings.productIds || []).map(Number)); const selected = products.filter(product => selectedIds.has(Number(product.id))).slice(0, 5); const grid = $('#newArrivalProductGrid'); if (grid) grid.innerHTML = selected.length ? selected.map(productMarkup).join('') : '<p class="empty-state">Admin panel থেকে New arrival products select করুন।</p>'; }
 function renderCategoryRows() {
   const container = $('#dynamicCategorySections');
@@ -2543,13 +2543,82 @@ async function refreshCustomerMessageSummary() {
   }
 }
 
+
+/* FAVORITES: USE EXISTING CUSTOMER DASHBOARD HOOK */
+function getFavoriteProductIds() {
+  const owner = String(currentUser?.id || currentUser?.email || 'guest');
+  try {
+    const value = JSON.parse(localStorage.getItem(`ziyana_favorites_${owner}`) || '[]');
+    return Array.isArray(value) ? value.map(Number).filter(Number.isFinite) : [];
+  } catch (_) { return []; }
+}
+function isFavoriteProduct(id) {
+  return getFavoriteProductIds().includes(Number(id));
+}
+function injectCustomerFavoritesCard() {
+  if (!currentUser || currentUser.role === 'admin') return;
+  const dashboard = document.querySelector('.customer-dashboard');
+  if (!dashboard || dashboard.querySelector('[data-action="customer-favorites"]')) return;
+
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'customer-message-dashboard-card';
+  card.dataset.action = 'customer-favorites';
+  card.innerHTML = `<span class="customer-message-icon">♥</span><span class="customer-message-copy"><small>MY ACCOUNT</small><strong>My Favorites</strong><em>${getFavoriteProductIds().length} saved</em></span><span class="customer-message-arrow">→</span>`;
+
+  const anchor = dashboard.querySelector('[data-action="customer-messages"]')
+    || dashboard.querySelector('#customerStatusRail');
+  if (anchor?.parentNode) anchor.parentNode.insertBefore(card, anchor.nextSibling);
+  else dashboard.prepend(card);
+}
+function openCustomerFavorites() {
+  const ids = new Set(getFavoriteProductIds());
+  const saved = products.filter(product => ids.has(Number(product.id)));
+  const content = document.querySelector('#ordersContent');
+  if (!content) return;
+
+  content.innerHTML = `<div class="panel-heading"><p class="eyebrow">MY ACCOUNT</p><h2>My Favorites</h2><p>${saved.length}টি পণ্য সংরক্ষিত</p><button class="outline-button" data-action="my-orders-back">ড্যাশবোর্ডে ফিরুন</button></div><div class="product-grid favorite-products-view">${saved.length ? saved.map(productMarkup).join('') : '<p class="empty-state">এখনও কোনো পণ্য favorite করা হয়নি। পছন্দের পণ্যের ♥ চাপুন।</p>'}</div>`;
+  openModal('ordersModal');
+}
+document.addEventListener('click', event => {
+  const card = event.target.closest('[data-action="customer-favorites"]');
+  if (card) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openCustomerFavorites();
+    return;
+  }
+
+  const heart = event.target.closest('.wishlist[data-favorite-id]');
+  if (!heart) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const id = Number(heart.dataset.favoriteId);
+  const owner = String(currentUser?.id || currentUser?.email || 'guest');
+  const ids = new Set(getFavoriteProductIds());
+  if (ids.has(id)) ids.delete(id);
+  else ids.add(id);
+  localStorage.setItem(`ziyana_favorites_${owner}`, JSON.stringify([...ids]));
+
+  const active = ids.has(id);
+  heart.classList.toggle('active', active);
+  heart.textContent = active ? '♥' : '♡';
+  heart.setAttribute('aria-pressed', String(active));
+  if (document.querySelector('.favorite-products-view')) openCustomerFavorites();
+  showToast(active ? 'Favorites-এ যোগ হয়েছে ♥' : 'Favorites থেকে সরানো হয়েছে');
+}, true);
+
 function injectCustomerMessageCard() {
   if (!currentUser || currentUser.role === 'admin') return;
 
   const dashboard = document.querySelector('.customer-dashboard');
   if (!dashboard) return;
 
-  if (dashboard.querySelector('[data-action="customer-messages"]')) return;
+  if (dashboard.querySelector('[data-action="customer-messages"]')) {
+    injectCustomerFavoritesCard();
+    return;
+  }
 
   const card = document.createElement('button');
   card.type = 'button';
@@ -2574,6 +2643,7 @@ function injectCustomerMessageCard() {
   }
 
   void refreshCustomerMessageSummary();
+  injectCustomerFavoritesCard();
 }
 
 if (!window.__customerMessageDashboardWrapped) {
