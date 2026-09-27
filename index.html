@@ -7,12 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=fix-20260923-12" />
+    <link rel="stylesheet" href="style.css?v=shared-brand-1" />
   </head>
   <body>
 <header class="site-header">
       <div class="header-main container">
-        <a class="brand" href="#top" aria-label="Ziyana Shop home"><span class="brand-mark">Z</span><span>ziyana<span>shop</span></span></a>
+        <a class="brand brand-logo-link" href="./index.html" aria-label="Ziyana Fashion home"><img class="brand-logo-img logo-on-light" src="ziyana-logo-light.svg?v=20260927" alt="Ziyana Fashion"></a>
         <div class="search-wrap">
           <input id="searchInput" type="search" placeholder="আপনি কী খুঁজছেন?" aria-label="Search products" />
           <button id="searchButton" class="search-button" aria-label="Search">⌕</button>
@@ -48,14 +48,23 @@
   <div class="category-grid" id="categoryGrid"></div>
 </section><div id="dynamicCategorySections"></div>
 
-      <section class="section container gift-section" id="gifts"><div class="section-heading"><div><p class="eyebrow">FREE WITH YOUR ORDER</p><h2>Free gifts</h2></div></div><div class="gift-grid" id="giftGrid"></div></section>
+      
+<section class="promo-master-slider" id="promoMasterSlider" aria-label="Promotional sections">
+  <div class="promo-slider-track">
+    <article class="promo-slide" data-promo-static="campaign" data-promo-key="campaign"><section class="deal-band campaign-band" id="campaign"><div class="section container"><div class="campaign-banner" data-action="new-arrival-products" role="button" tabindex="0" aria-label="New arrival products দেখুন"><div><p class="eyebrow coral">SPECIAL CAMPAIGN · JUST FOR YOU</p><h2><span id="campaignBannerTitle">Style refresh,</span><br /><em id="campaignBannerSubtitle">feel your best.</em></h2><p id="campaignBannerText">নির্বাচিত category-তে special price, limited-time offers এবং নতুন season-এর favourites একসাথে.</p></div><div class="campaign-visual"><img id="campaignBannerImage" src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85" alt="Campaign banner"><div class="campaign-stamp">UP<br /><strong>TO</strong><br /><b id="campaignBannerDiscount">50%</b><br />OFF</div></div></div><div class="category-product-section new-arrivals-section" id="newArrivals" style="display:none !important;"><div class="section-heading deal-heading"><div><p class="eyebrow coral">NEW ARRIVALS</p><h2>New arrival</h2></div></div><div class="product-grid" id="newArrivalProductGrid"></div></div></section></article>
+    <article class="promo-slide" data-promo-static="mall" data-promo-key="mall"><section class="section container story-section" id="mall"><div class="story-card" data-action="mall-products" role="button" tabindex="0" aria-label="Ziyana Shop দেখুন"><div><p class="eyebrow">ZIYANA SHOP</p><h2>Ziyana Shop Featured Section</h2><p>আপনার জন্য বেছে নেওয়া ট্রেন্ডিং ও পছন্দের পণ্যগুলো এক নজরে দেখে নিন।</p></div><img src="https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1000&q=85" alt="Clothing rack in a modern store" /></div></section></article>
+  </div>
+  <button type="button" class="promo-slider-arrow promo-slider-prev" aria-label="Previous section">←</button>
+  <button type="button" class="promo-slider-arrow promo-slider-next" aria-label="Next section">→</button>
+  <div class="promo-slider-dots" aria-label="Promotional sections"></div>
+</section>
+<div class="promo-sources" aria-hidden="true" hidden>
+  <section class="section container gift-section" id="gifts"><div class="section-heading"><div><p class="eyebrow">FREE WITH YOUR ORDER</p><h2>Free gifts</h2></div></div><div class="gift-grid" id="giftGrid"></div></section>
+  <section id="campaignAdsSource" class="special-campaigns"><div class="ad-grid" id="adGrid"></div></section>
+</div>
+</main>
 
-      <section class="deal-band campaign-band" id="campaign"><div class="section container"><div class="campaign-banner"><div><p class="eyebrow coral">SPECIAL CAMPAIGN · JUST FOR YOU</p><h2><span id="campaignBannerTitle">Style refresh,</span><br /><em id="campaignBannerSubtitle">feel your best.</em></h2><p id="campaignBannerText">নির্বাচিত category-তে special price, limited-time offers এবং নতুন season-এর favourites একসাথে.</p><a class="dark-button" href="#newArrivals">Shop campaign <span>→</span></a></div><div class="campaign-visual"><img id="campaignBannerImage" src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85" alt="Campaign banner"><div class="campaign-stamp">UP<br /><strong>TO</strong><br /><b id="campaignBannerDiscount">50%</b><br />OFF</div></div></div><section class="special-campaigns"><div class="section-heading deal-heading"><div><p class="eyebrow coral">SPECIAL CAMPAIGNS</p><h2>Weekend edits</h2></div></div><div class="ad-grid" id="adGrid"></div></section><div class="category-product-section new-arrivals-section" id="newArrivals"><div class="section-heading deal-heading"><div><p class="eyebrow coral">NEW ARRIVALS</p><h2>New arrival</h2></div></div><div class="product-grid" id="newArrivalProductGrid"></div></div></section>
-
-      <section class="section container story-section" id="mall"><div class="story-card"><div><p class="eyebrow">ZIYANA SHOP</p><h2>Ziyana Shop Featured Section</h2><p>আপনার জন্য বেছে নেওয়া ট্রেন্ডিং ও পছন্দের পণ্যগুলো এক নজরে দেখে নিন।</p><a href="#mall" data-action="mall-products" class="dark-button">Ziyana Shop ঘুরে দেখুন <span>→</span></a></div><img src="https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1000&q=85" alt="Clothing rack in a modern store" /></div></section>
-    </main>
-
-    <footer id="help"><div class="container footer-inner"><div><a class="brand footer-brand" href="#top"><span class="brand-mark">Z</span><span>ziyana<span>shop</span></span></a><p>আপনার everyday shopping, আরও সুন্দর করে।</p></div><div><b>কাস্টমার কেয়ার</b><a href="#help" data-info-page="help">সাহায্য কেন্দ্র</a><a href="#help" data-info-page="returns">রিটার্ন পলিসি</a><a href="#help" data-action="order-tracker">Order Tracker</a></div><div><b>আমাদের সাথে থাকুন</b><a href="#categories" data-action="mall-products">Ziyana Shop</a></div><div><b>অ্যাপ ডাউনলোড করুন</b><span class="app-badge"> App Store</span><span class="app-badge">▶ Google Play</span></div></div><div class="copyright container">© 2026 Ziyana Shop · Made for Bangladesh</div></footer>
+    <footer id="help"><div class="container footer-inner"><div><a class="brand footer-brand brand-logo-link" href="./index.html" aria-label="Ziyana Fashion home"><img class="brand-logo-img logo-on-dark" src="ziyana-logo-dark.svg?v=20260927" alt="Ziyana Fashion"></a><p>আপনার everyday shopping, আরও সুন্দর করে।</p></div><div><b>কাস্টমার কেয়ার</b><a href="#help" data-info-page="help">সাহায্য কেন্দ্র</a><a href="#help" data-info-page="returns">রিটার্ন পলিসি</a><a href="#help" data-action="order-tracker">Order Tracker</a></div><div><b>আমাদের সাথে থাকুন</b><a href="#categories" data-action="mall-products">Ziyana Shop</a></div><div><b>অ্যাপ ডাউনলোড করুন</b><span class="app-badge"> App Store</span><span class="app-badge">▶ Google Play</span></div></div><div class="copyright container">© 2026 Ziyana Shop · Made for Bangladesh</div></footer>
 
     <div class="overlay" id="overlay" hidden></div>
     <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart"><div class="drawer-head"><h2>আপনার ব্যাগ <span id="drawerCount">0</span></h2><button id="closeCart" aria-label="Close cart">×</button></div><div id="cartItems" class="cart-items"><div class="empty-cart"><span>🛍</span><h3>আপনার ব্যাগ খালি</h3><p>পছন্দের পণ্যগুলো এখানে জমা হবে।</p></div></div><div class="cart-footer"><div><span>সাবটোটাল</span><strong id="cartTotal">৳০</strong></div><button class="primary-button checkout-button">চেকআউট করুন <span>→</span></button></div></aside>
@@ -69,6 +78,9 @@
     <div class="toast" id="toast">পণ্যটি আপনার ব্যাগে যোগ হয়েছে ✓</div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=fix-20260923-13"></script>
+    <script src="app.js?v=shared-brand-1"></script>
+    <script src="slider-layout-fix.js?v=1"></script>
+    <script src="route-pages.js?v=1"></script>
+    <script src="brand-views.js?v=1"></script>
   </body>
 </html>
