@@ -245,6 +245,7 @@ async function loadCloudState() {
 
   products = (productResult.data || []).map(product => normaliseProductMedia({
     id:product.id,
+imageFit:product.image_fit || null,
 sizeGuide:product.size_guide || null,
     name:product.name,
     price:Number(product.price),
@@ -415,9 +416,8 @@ if (!window.__sizeGuideFormObserver && document.body) {
 
 function bindEditorForms() { const productForm = $('#productEditForm'); if (productForm) productForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); void saveProductEdit(productForm); }; const campaignForm = $('#adEditForm'); if (campaignForm) campaignForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveCampaignEdit(campaignForm); }; const giftForm = $('#giftEditForm'); if (giftForm) giftForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveGiftEdit(giftForm); }; const mallForm = $('#mallForm'); if (mallForm) mallForm.onsubmit = event => { event.preventDefault(); event.stopImmediatePropagation(); saveMallSettings(mallForm); }; }
 
-async function saveProductEdit(form) { const data = Object.fromEntries(new FormData(form)); const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const requestedPrimary = String(data.image || '').trim(); let images = productImages(product); if (requestedPrimary && requestedPrimary !== primaryProductImage(product)) images = [requestedPrimary, ...images.filter(url => url !== requestedPrimary)]; images = [...images, ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image দিন'); const videos = [...productVideos(product), ...uploaded.videos]; const previousCategory = product.category; Object.assign(product, normaliseProductMedia({name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:product.rating || '4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos,description:data.description || '',sizeGuide:parseProductSizeGuide(data.sizeGuideRemoveImage === 'on' ? '' : (uploaded.sizeGuideImage || product.sizeGuide?.image || ''),data.sizeGuideRows),imageFit:readProductImageFit(data),imageFit:readProductImageFit(data)})); syncProductCategoryMembership(product, previousCategory); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
-
-async function createProductFromForm(form) { const data = Object.fromEntries(new FormData(form)); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const manualImage = String(data.image || '').trim(); const images = [...(manualImage ? [manualImage] : []), ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image upload বা URL দিন'); const newProduct = normaliseProductMedia({id:Date.now(),name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos:uploaded.videos,description:data.description || '',sizeGuide:parseProductSizeGuide(uploaded.sizeGuideImage,data.sizeGuideRows)}); products.unshift(newProduct); syncProductCategoryMembership(newProduct); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+async function saveProductEdit(form) { const data = Object.fromEntries(new FormData(form)); const product = products.find(item => item.id === Number(data.id)); if (!product) return showToast('Product পাওয়া যায়নি'); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const requestedPrimary = String(data.image || '').trim(); let images = productImages(product); if (requestedPrimary && requestedPrimary !== primaryProductImage(product)) images = [requestedPrimary, ...images.filter(url => url !== requestedPrimary)]; images = [...images, ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image দিন'); const videos = [...productVideos(product), ...uploaded.videos]; const previousCategory = product.category; Object.assign(product, normaliseProductMedia({name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:product.rating || '4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos,description:data.description || '',sizeGuide:parseProductSizeGuide(data.sizeGuideRemoveImage === 'on' ? '' : (uploaded.sizeGuideImage || product.sizeGuide?.image || ''),data.sizeGuideRows),imageFit:readProductImageFit(data),imageFit:readProductImageFit(data)})); syncProductCategoryMembership(product, previousCategory); saveState(); closeModal('ordersModal'); renderProducts(); renderAdmin(); showToast('Product update হয়েছে'); } catch (error) { showToast(error.message ||async function createProductFromForm(form) { const data = Object.fromEntries(new FormData(form)); const price = Number(data.price); const old = Number(data.old); if (!data.name?.trim() || !data.category || !Number.isFinite(price) || !Number.isFinite(old) || !Number.isFinite(Number(data.stock))) return showToast('Product-এর সব তথ্য পূরণ করুন'); try { const uploaded = await uploadProductMediaFromForm(form); const manualImage = String(data.image || '').trim(); const images = [...(manualImage ? [manualImage] : []), ...uploaded.images]; if (!images.length) return showToast('কমপক্ষে একটি product image upload বা URL দিন'); const newProduct = normaliseProductMedia({id:Date.now(),name:data.name.trim(),price,old,discount:old ? `-${Math.round((1 - price / old) * 100)}%` : '',rating:'4.8',category:data.category,stock:Number(data.stock),image:images[0],images,videos:uploaded.videos,description:data.description || '',imageFit:readProductImageFit(data),sizeGuide:parseProductSizeGuide(uploaded.sizeGuideImage,data.sizeGuideRows)}); products.unshift(newProduct); syncProductCategoryMembership(newProduct); saveState(); renderProducts(); renderAdmin(); showToast('নতুন পণ্য প্রকাশিত হয়েছে'); } catch (error) { showToast(error.message || 'Product media upload হয়নি'); } }
+| 'Product media upload হয়নি'); } }
 
 function saveManagedCategoryForm(form) {
   const data = Object.fromEntries(new FormData(form));
@@ -829,7 +829,7 @@ function getCampaignProducts() {
   const unique = new Map(managed.map(product => [Number(product.id), product]));
   return unique.size ? [...unique.values()] : products;
 }
-function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" style="${productImageFitStyle(product)}"><button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
+function productMarkup(product) { const image = primaryProductImage(product); return `<article class="product-card"><div class="product-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" style="${productImageFitStyle(product, 'home')}"><button class="wishlist" aria-label="Add ${escapeHtml(product.name)} to wishlist">♡</button><span class="discount">${escapeHtml(product.discount || '')}</span></div><div class="product-info"><h3>${escapeHtml(product.name)}</h3><div><span class="stars">★★★★★</span><span class="rating">(${escapeHtml(product.rating || '4.8')})</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><small class="stock-note">${product.stock > 0 ? `${product.stock}টি স্টকে আছে` : 'স্টক শেষ'}</small><div class="product-actions"><button class="add-button" data-add="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>${product.stock > 0 ? 'ব্যাগে যোগ করুন' : 'স্টক শেষ'}</button><button class="buy-now-button add-button" data-buy-now="${product.id}" ${product.stock < 1 ? 'disabled' : ''}>Buy now</button></div></div></article>`; }
 function renderNewArrivals() { const selectedIds = new Set((campaignSettings.productIds || []).map(Number)); const selected = products.filter(product => selectedIds.has(Number(product.id))).slice(0, 5); const grid = $('#newArrivalProductGrid'); if (grid) grid.innerHTML = selected.length ? selected.map(productMarkup).join('') : '<p class="empty-state">Admin panel থেকে New arrival products select করুন।</p>'; }
 function renderCategoryRows() {
   const container = $('#dynamicCategorySections');
@@ -1519,7 +1519,7 @@ function resetAdminAccount() { const admin = {id:1,name:'Laiba Admin',email:'adm
 function handleRoute() { const params = new URLSearchParams(location.search); if (params.get('reset-admin') === '1') resetAdminAccount(); if (location.hash === '#admin-panel' || params.get('view') === 'admin') renderAdmin(); }
 handleRoute(); window.addEventListener('hashchange', handleRoute);
 
-function openProductDetails(product) { rememberRecentlyViewed(product.id); const images = productImages(product); const videos = productVideos(product); const productReviews = reviews.filter(review => review.productId === product.id); const imageMarkup = images.map((url, index) => `<div class="product-media-frame"><img src="${escapeHtml(url)}" alt="${escapeHtml(product.name)} image ${index + 1}" loading="lazy" style="${productImageFitStyle(product)}"></div>`).join(''); const videoMarkup = videos.map((url, index) => `<div class="product-media-frame"><video controls preload="metadata" playsinline aria-label="${escapeHtml(product.name)} video ${index + 1}"><source src="${escapeHtml(url)}">আপনার browser video চালাতে পারছে না।</video></div>`).join(''); $('#modalContent').innerHTML = `<div class="modal-product"><div class="product-media-gallery">${imageMarkup}${videoMarkup}</div><div><p class="eyebrow">ZIYANA SHOP SELECT</p><h2>${escapeHtml(product.name)}</h2><div><span class="stars">★★★★★</span> <span class="rating">${escapeHtml(product.rating)} / 5</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><p>${escapeHtml(product.description)}</p>${productSizeGuideButton(product)}<button class="primary-button" data-add="${product.id}">ব্যাগে যোগ করুন</button><div class="product-reviews"><h3>Customer reviews (${productReviews.length})</h3>${productReviews.length ? productReviews.map(review => `<p><b>${'★'.repeat(review.rating)}</b> ${escapeHtml(review.comment)} <small>· ${escapeHtml(review.userName)}</small></p>`).join('') : '<p>এখনও কোনো review নেই।</p>'}</div></div></div>`; openModal('productModal'); }
+function openProductDetails(product) { rememberRecentlyViewed(product.id); const images = productImages(product); const videos = productVideos(product); const productReviews = reviews.filter(review => review.productId === product.id); const imageMarkup = images.map((url, index) => `<div class="product-media-frame"><img src="${escapeHtml(url)}" alt="${escapeHtml(product.name)} image ${index + 1}" loading="lazy" style="${productImageFitStyle(product, 'details')}"></div>`).join(''); const videoMarkup = videos.map((url, index) => `<div class="product-media-frame"><video controls preload="metadata" playsinline aria-label="${escapeHtml(product.name)} video ${index + 1}"><source src="${escapeHtml(url)}">আপনার browser video চালাতে পারছে না।</video></div>`).join(''); $('#modalContent').innerHTML = `<div class="modal-product"><div class="product-media-gallery">${imageMarkup}${videoMarkup}</div><div><p class="eyebrow">ZIYANA SHOP SELECT</p><h2>${escapeHtml(product.name)}</h2><div><span class="stars">★★★★★</span> <span class="rating">${escapeHtml(product.rating)} / 5</span></div><div class="price"><strong>${money(product.price)}</strong><span class="old-price">${money(product.old)}</span></div><p>${escapeHtml(product.description)}</p>${productSizeGuideButton(product)}<button class="primary-button" data-add="${product.id}">ব্যাগে যোগ করুন</button><div class="product-reviews"><h3>Customer reviews (${productReviews.length})</h3>${productReviews.length ? productReviews.map(review => `<p><b>${'★'.repeat(review.rating)}</b> ${escapeHtml(review.comment)} <small>· ${escapeHtml(review.userName)}</small></p>`).join('') : '<p>এখনও কোনো review নেই।</p>'}</div></div></div>`; openModal('productModal'); }
 document.addEventListener('click', event => { const card = event.target.closest('.product-card'); if (!card || event.target.closest('button')) return; const product = products.find(item => item.name === card.querySelector('h3')?.textContent); if (!product) return; event.preventDefault(); event.stopImmediatePropagation(); openProductDetails(product); }, true);
 
 document.addEventListener('click', event => {
@@ -4142,3 +4142,161 @@ if (typeof openModal === 'function' && !window.__restoreProductModalTop) {
     return result;
   };
 }
+
+
+/* PRODUCT FORM: SEPARATE HOME AND DETAILS IMAGE FIT 20260928 */
+function normaliseProductImageFit(value) {
+  const v = value || {};
+  const clamp = n => Math.max(70, Math.min(200, Number(n) || 100));
+  const legacy = {x:v.x, y:v.y};
+  const oneView = fit => ({
+    x:clamp(fit?.x ?? legacy.x),
+    y:clamp(fit?.y ?? legacy.y)
+  });
+  return {
+    home:oneView(v.home),
+    details:oneView(v.details)
+  };
+}
+
+function productImageFitStyle(product, view = 'home') {
+  const fit = normaliseProductImageFit(product?.imageFit)[view] || {x:100,y:100};
+  return `--product-fit-x:${fit.x / 100};--product-fit-y:${fit.y / 100}`;
+}
+
+function readProductImageFit(data) {
+  return normaliseProductImageFit({
+    home:{x:data.homeImageFitX,y:data.homeImageFitY},
+    details:{x:data.detailsImageFitX,y:data.detailsImageFitY}
+  });
+}
+
+function addProductImageFitControls(form) {
+  if (!form || form.querySelector('[data-product-fit-controls]')) return;
+  if (!form.querySelector('[name="image"]') && !form.querySelector('[name="images"]')) return;
+
+  const id = Number(form.querySelector('[name="id"]')?.value);
+  const product = typeof products !== 'undefined'
+    ? products.find(item => Number(item.id) === id) : null;
+  const fit = normaliseProductImageFit(product?.imageFit);
+  const source = product?.image || form.querySelector('[name="image"]')?.value || '';
+
+  const panel = document.createElement('details');
+  panel.className = 'product-image-fit-fields';
+  panel.dataset.productFitControls = '1';
+  panel.open = true;
+  panel.innerHTML = `
+    <summary>ছবির মাপ ঠিক করুন</summary>
+    <div class="product-fit-view">
+      <h4>Home page view</h4>
+      <div class="product-fit-frame" data-fit-frame="home">
+        <img data-fit-image="home" alt="Home page image preview">
+      </div>
+      <label>Horizontal scale <output data-fit-output="home-x">${fit.home.x}%</output>
+        <input type="range" name="homeImageFitX" data-fit-axis="x" data-fit-view="home"
+          min="70" max="200" value="${fit.home.x}">
+      </label>
+      <label>Vertical scale <output data-fit-output="home-y">${fit.home.y}%</output>
+        <input type="range" name="homeImageFitY" data-fit-axis="y" data-fit-view="home"
+          min="70" max="200" value="${fit.home.y}">
+      </label>
+    </div>
+    <div class="product-fit-view">
+      <h4>Details modal view</h4>
+      <div class="product-fit-frame" data-fit-frame="details">
+        <img data-fit-image="details" alt="Details image preview">
+      </div>
+      <label>Horizontal scale <output data-fit-output="details-x">${fit.details.x}%</output>
+        <input type="range" name="detailsImageFitX" data-fit-axis="x" data-fit-view="details"
+          min="70" max="200" value="${fit.details.x}">
+      </label>
+      <label>Vertical scale <output data-fit-output="details-y">${fit.details.y}%</output>
+        <input type="range" name="detailsImageFitY" data-fit-axis="y" data-fit-view="details"
+          min="70" max="200" value="${fit.details.y}">
+      </label>
+    </div>`;
+
+  const anchor = form.querySelector('.product-size-guide-fields')
+    || form.querySelector('.product-media-fields')
+    || form.querySelector('[name="description"]')
+    || form.querySelector('[name="image"]');
+  if (anchor) anchor.insertAdjacentElement('afterend', panel);
+
+  panel.querySelectorAll('[data-fit-image]').forEach(img => {
+    if (source) img.src = source;
+  });
+  panel.querySelectorAll('[data-fit-image]').forEach(img => {
+    img.addEventListener('load', () => updateProductFitPreview(panel));
+  });
+  updateProductFitPreview(panel);
+}
+
+function updateProductFitPreview(panel) {
+  if (!panel) return;
+  for (const view of ['home','details']) {
+    const frame = panel.querySelector(`[data-fit-frame="${view}"]`);
+    const img = panel.querySelector(`[data-fit-image="${view}"]`);
+    const x = panel.querySelector(`[data-fit-view="${view}"][data-fit-axis="x"]`);
+    const y = panel.querySelector(`[data-fit-view="${view}"][data-fit-axis="y"]`);
+    if (!frame || !img || !x || !y || !img.naturalWidth || !img.naturalHeight) continue;
+
+    const width = view === 'home' ? 260 : 460;
+    const height = width * 1.25;
+    const contain = Math.min(width / img.naturalWidth, height / img.naturalHeight);
+    const imageWidth = img.naturalWidth * contain;
+    const imageHeight = img.naturalHeight * contain;
+    const maxX = Math.floor(Math.max(100, Math.min(200, width / imageWidth * 100)));
+    const maxY = Math.floor(Math.max(100, Math.min(200, height / imageHeight * 100)));
+
+    x.min = '70'; x.max = String(maxX);
+    y.min = '70'; y.max = String(maxY);
+    x.value = String(Math.min(maxX, Math.max(70, Number(x.value) || 100)));
+    y.value = String(Math.min(maxY, Math.max(70, Number(y.value) || 100)));
+
+    const sx = Number(x.value) / 100;
+    const sy = Number(y.value) / 100;
+    frame.style.setProperty('--fit-width', `${width}px`);
+    frame.style.setProperty('--fit-height', `${height}px`);
+    img.style.transform = `scale(${sx}, ${sy})`;
+    img.style.transformOrigin = 'center';
+    panel.querySelector(`[data-fit-output="${view}-x"]`).value = `${x.value}%`;
+    panel.querySelector(`[data-fit-output="${view}-y"]`).value = `${y.value}%`;
+  }
+}
+
+function setupProductFitControls() {
+  document.querySelectorAll('#productForm, #productEditForm').forEach(form => {
+    addProductImageFitControls(form);
+    updateProductFitPreview(form.querySelector('[data-product-fit-controls]'));
+  });
+}
+
+document.addEventListener('input', event => {
+  if (event.target.matches('[data-fit-axis]')) {
+    updateProductFitPreview(event.target.closest('[data-product-fit-controls]'));
+  }
+}, true);
+
+document.addEventListener('change', event => {
+  if (event.target.name !== 'images' && event.target.name !== 'image') return;
+  const form = event.target.closest('#productForm, #productEditForm');
+  const file = event.target.files?.[0];
+  const url = file ? URL.createObjectURL(file) : event.target.value;
+  if (!url || !form) return;
+  form.querySelectorAll('[data-fit-image]').forEach(img => { img.src = url; });
+});
+
+if (!window.__productFitControlsObserver && document.body) {
+  window.__productFitControlsObserver = new MutationObserver(setupProductFitControls);
+  window.__productFitControlsObserver.observe(document.body, {childList:true, subtree:true});
+}
+if (typeof openModal === 'function' && !window.__productFitControlsOpenWrapped) {
+  window.__productFitControlsOpenWrapped = true;
+  const originalOpenModalForFit = openModal;
+  openModal = function() {
+    const result = originalOpenModalForFit.apply(this, arguments);
+    requestAnimationFrame(setupProductFitControls);
+    return result;
+  };
+}
+setupProductFitControls();
