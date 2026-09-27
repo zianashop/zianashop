@@ -5816,3 +5816,13 @@ body.ziyana-route-active #overlay{display:none!important}
   color:#242821!important;
   border-color:#d8dbd2!important;
 }
+
+
+/* Functional help center request form */
+.help-actions a{display:flex;align-items:center;gap:12px;text-decoration:none}
+.help-actions a:hover span{text-decoration:underline}
+.help-request-form{display:grid;gap:12px;margin-top:18px}
+.help-request-form label{display:grid;gap:6px;font-weight:600}
+.help-request-form input,.help-request-form select,.help-request-form textarea{box-sizing:border-box;width:100%;padding:11px 12px;border:1px solid #d9ddd4;border-radius:8px;font:inherit}
+.help-request-form textarea{min-height:90px;resize:vertical}
+.help-request-status{font-size:.9rem;margin:0}

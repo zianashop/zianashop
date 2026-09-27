@@ -989,7 +989,59 @@ function showMallProducts() {
   $('#campaignViewContent').innerHTML = `<div class="campaign-view-header"><p class="eyebrow">ZIYANA SHOP VERIFIED</p><h2>Ziyana Shop products</h2><p>Admin panel থেকে বাছাই করা products দেখুন।</p></div><div class="campaign-product-grid">${selected.map(productMarkup).join('') || '<p class="empty-state">এখনও কোনো Ziyana Shop product select করা হয়নি।</p>'}</div>`;
   openModal('campaignViewModal');
 }
-function showInfoPage(page) { const content = page === 'returns' ? {eyebrow:'RETURN POLICY',title:'সহজ রিটার্ন, নিশ্চিন্ত শপিং',text:'পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে রিটার্নের অনুরোধ করতে পারবেন। পণ্যটি অব্যবহৃত, অক্ষত এবং মূল packaging-সহ থাকতে হবে।'} : {eyebrow:'HELP CENTER',title:'কীভাবে আমরা সাহায্য করতে পারি?',text:'Order tracking, delivery, payment অথবা return নিয়ে সাহায্যের জন্য Order ID ও mobile number সঙ্গে রাখুন। আমাদের support team আপনার অনুরোধ যাচাই করে দ্রুত উত্তর দেবে।'}; $('#infoContent').innerHTML = `<div class="info-page"><p class="eyebrow">${content.eyebrow}</p><h2>${content.title}</h2><p>${content.text}</p><div class="info-points"><div><b>01</b><span>Order ID দিয়ে status দেখুন</span></div><div><b>02</b><span>প্রয়োজনে support-এ যোগাযোগ করুন</span></div><div><b>03</b><span>সঠিক তথ্য দিয়ে request পাঠান</span></div></div></div>`; openModal('infoModal'); }
+function showInfoPage(page) {
+  if (page === 'returns') {
+    $('#infoContent').innerHTML = `<div class="info-page"><p class="eyebrow">RETURN & EXCHANGE</p><h2>রিটার্ন ও এক্সচেঞ্জ</h2><p>যোগ্যতা, refund এবং exchange-এর নিয়ম আলাদা page-এ দেখুন।</p><a class="primary-button" href="./return-exchange.html">নীতিমালা দেখুন</a></div>`;
+    openModal('infoModal');
+    return;
+  }
+
+  $('#infoContent').innerHTML = `<div class="info-page">
+    <p class="eyebrow">HELP CENTER</p>
+    <h2>কীভাবে আমরা সাহায্য করতে পারি?</h2>
+    <p>Order tracking, delivery, payment অথবা return নিয়ে সাহায্যের জন্য Order ID ও mobile number সঙ্গে রাখুন।</p>
+    <div class="info-points help-actions">
+      <a href="#help" data-action="order-tracker"><b>01</b><span>Order ID দিয়ে status দেখুন</span></a>
+      <a href="./contact-us.html"><b>02</b><span>প্রয়োজনে support-এ যোগাযোগ করুন</span></a>
+      <a href="#helpRequestForm"><b>03</b><span>সঠিক তথ্য দিয়ে request পাঠান</span></a>
+    </div>
+    <form id="helpRequestForm" class="help-request-form">
+      <label>Order ID <input name="orderId" required autocomplete="off" placeholder="আপনার Order ID"></label>
+      <label>Mobile number <input name="mobile" required type="tel" autocomplete="tel" placeholder="অর্ডারে দেওয়া mobile number"></label>
+      <label>বিষয়
+        <select name="topic" required>
+          <option value="">একটি বিষয় বাছুন</option>
+          <option>Order tracking</option><option>Delivery</option>
+          <option>Payment</option><option>Return or exchange</option><option>Other</option>
+        </select>
+      </label>
+      <label>বিস্তারিত <textarea name="details" required maxlength="1000" placeholder="সমস্যাটি সংক্ষেপে লিখুন"></textarea></label>
+      <button class="primary-button" type="submit">WhatsApp-এ request তৈরি করুন</button>
+      <p id="helpRequestStatus" class="help-request-status" aria-live="polite">WhatsApp খুললে তথ্য দেখে Send চাপুন।</p>
+    </form>
+  </div>`;
+
+  const form = document.getElementById('helpRequestForm');
+  form?.addEventListener('submit', event => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const message = [
+      'Ziyana Shop Support Request',
+      `Order ID: ${data.get('orderId')}`,
+      `Mobile: ${data.get('mobile')}`,
+      `বিষয়: ${data.get('topic')}`,
+      `বিস্তারিত: ${data.get('details')}`
+    ].join('\n');
+    const url = new URL('https://wa.me/8801721352962');
+    url.searchParams.set('text', message);
+    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+    const status = document.getElementById('helpRequestStatus');
+    if (status) status.textContent = 'WhatsApp-এ request তৈরি হয়েছে। তথ্য দেখে Send চাপুন।';
+  });
+
+  openModal('infoModal');
+}
+
 function renderOrderTracker() { $('#ordersContent').innerHTML = `<div class="info-page"><p class="eyebrow">ORDER TRACKER</p><h2>আপনার order কোথায়?</h2><p>Order number, mobile অথবা email দিয়ে খুঁজুন।</p><div class="track-row"><input id="publicTrackInput" placeholder="Order ID / mobile / email"><button class="primary-button" data-action="public-track-order">Track order</button></div><div id="publicTrackResult"></div></div>`; openModal('ordersModal'); }
 function openOrders() { if (!currentUser) return openAuth('login'); renderOrders(); openModal('ordersModal'); }
 function showAdminOrder(orderId) { const order = orders.find(item => item.id === String(orderId)); if (!order) return; const shipping = order.shipping ?? Math.max(0, order.total - order.subtotal + order.discount); $('#ordersContent').innerHTML = `<div class="panel-heading"><p class="eyebrow">ORDER DETAILS</p><h2>Order #${escapeHtml(order.id)}</h2><p>${escapeHtml(order.createdAt)} · ${escapeHtml(order.statusLabel)}</p></div><div class="order-detail-grid"><div><small>Customer name</small><b>${escapeHtml(order.customer.name)}</b></div><div><small>Mobile number</small><b>${escapeHtml(order.customer.phone)}</b></div><div class="order-address"><small>Delivery address</small><b>${escapeHtml(order.customer.address)}</b></div><div><small>Payment</small><b>${escapeHtml(order.payment)}</b></div></div><div class="order-detail-items">${order.items.map(item => `<div><span>${escapeHtml(item.name)} × ${item.quantity}</span><b>${money(item.price * item.quantity)}</b></div>`).join('')}</div><div class="checkout-summary detail-summary"><div><span>Subtotal</span><b>${money(order.subtotal)}</b></div><div><span>Discount</span><b class="discount-text">-${money(order.discount)}</b></div><div><span>Shipping charge</span><b>${shipping ? money(shipping) : 'FREE'}</b></div><div class="total-row"><span>Total</span><strong>${money(order.total)}</strong></div></div>`; openModal('ordersModal'); }
