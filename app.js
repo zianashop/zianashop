@@ -3853,14 +3853,6 @@ async function handleAdminOrderStatusChange(order, select) {
         return;
       }
 
-      const button = document.createElement('button');
-
-      button.type = 'button';
-      button.className = 'outline-button';
-      button.dataset.action = 'edit-profile';
-      button.textContent = 'প্রোফাইল এডিট করুন';
-
-      actions.prepend(button);
     }, 0);
   };
 
