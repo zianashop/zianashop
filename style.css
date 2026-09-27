@@ -5787,3 +5787,32 @@ body.ziyana-route-active #overlay{display:none!important}
 .shared-modal-brand{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;margin:0 auto 14px!important}
 .shared-modal-brand .brand-logo-img{width:112px!important;height:94px!important}
 @media(max-width:800px){.brand-logo-link{width:82px!important;height:64px!important}.footer-brand.brand-logo-link{width:112px!important;height:94px!important}}
+
+
+/* Admin modal logo background fix */
+#adminModal>.shared-modal-brand{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+#adminModal>.shared-modal-brand .brand-logo-img{
+  background:transparent!important;
+}
+
+/* Admin control room light background */
+#adminModal .admin-top{
+  background:#fff!important;
+  color:#242821!important;
+  border:1px solid #e7e8e2!important;
+}
+#adminModal .admin-top h2,
+#adminModal .admin-top p:not(.eyebrow){
+  color:#242821!important;
+}
+#adminModal .admin-top .eyebrow{
+  color:#98721b!important;
+}
+#adminModal .admin-top .outline-button{
+  background:#fff!important;
+  color:#242821!important;
+  border-color:#d8dbd2!important;
+}
