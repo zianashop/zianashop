@@ -6664,3 +6664,67 @@ body.ziyana-route-active #overlay{display:none!important}
   transform-origin:center !important;
   object-fit:contain !important;
 }
+
+/* DRAG IMAGE POSITION IN PRODUCT FIT PREVIEWS 20260928 */
+
+/* DRAG IMAGE POSITION IN PRODUCT FIT PREVIEWS 20260928 */
+.product-fit-frame {
+  overflow: hidden !important;
+  touch-action: none !important;
+  cursor: grab;
+}
+.product-fit-frame img {
+  transform-origin: center !important;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.product-card .product-image > img,
+#productModal .product-media-gallery .product-media-frame > img {
+  transform:
+    translate(var(--product-fit-offset-x, 0%), var(--product-fit-offset-y, 0%))
+    scale(var(--product-fit-x, 1), var(--product-fit-y, 1)) !important;
+  transform-origin: center !important;
+}
+
+
+/* CATEGORY MANAGEMENT INLINE LAYOUT FIX */
+#adminModal #adminContent>.category-management-inline{
+  grid-column:1/-1!important;
+  display:block!important;
+  min-height:0!important;
+  cursor:default!important;
+  transform:none!important;
+}
+#adminModal .category-management-inline>.category-admin-tools{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+}
+@media(max-width:800px){
+  #adminModal .category-management-inline>.category-admin-tools{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* CATEGORY MANAGER OPEN/CLOSE AND SAVE FIX */
+#adminModal #adminContent .category-management-inline{
+  grid-column:1/-1!important;
+  cursor:default!important;
+  transform:none!important;
+}
+#adminModal .category-management-inline h3{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+#adminModal .category-management-inline .admin-card-toggle{
+  display:inline-flex!important;
+  flex:none;
+  cursor:pointer;
+}
+#adminModal .category-management-inline.is-collapsed>.category-admin-tools{
+  display:none!important;
+}

@@ -1329,31 +1329,22 @@ function setupAdminWorkspace() {
   const categoryForm = $('#categoryForm');
   if (categoryForm) {
     categoryForm.noValidate = true;
-    const saveCategoryButton = categoryForm.querySelector('button[type="submit"]');
-
-    if (saveCategoryButton) {
-      saveCategoryButton.onclick = event => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-
-        if (!categoryForm.checkValidity()) {
-          categoryForm.reportValidity();
-          return;
-        }
-
-        try {
-          saveManagedCategoryForm(categoryForm);
-        } catch (error) {
-          console.error('Category save failed:', error);
-          showToast(error?.message || 'Category save হয়নি');
-        }
-      };
-    }
-
-    categoryForm.onsubmit = event => {
+    categoryForm.addEventListener('submit', event => {
       event.preventDefault();
       event.stopImmediatePropagation();
-    };
+
+      if (!categoryForm.checkValidity()) {
+        categoryForm.reportValidity();
+        return;
+      }
+
+      try {
+        saveManagedCategoryForm(categoryForm);
+      } catch (error) {
+        console.error('Category save failed:', error);
+        showToast(error?.message || 'Category save হয়নি');
+      }
+    });
   }
   const productSection = [...admin.querySelectorAll('.admin-section')].find(section => section.querySelector('h3')?.textContent.includes('পণ্য তালিকা'));
   if (productSection) {
@@ -1937,28 +1928,38 @@ if (!window.__adminTileEditorBound) {
   window.addEventListener('load', startObserver);
 }
 
-/* CATEGORY MANAGEMENT TILE DECORATION */
+/* CATEGORY MANAGEMENT: STABLE INLINE OPEN/CLOSE */
 if (!window.__categoryManagementTileReady) {
   window.__categoryManagementTileReady = true;
 
-  const decorateCategoryManagementTile = () => {
+  const decorateCategoryManager = () => {
     const section = document.querySelector('#categoryForm')?.closest('.admin-section');
     if (!section) return;
 
-    section.classList.add('admin-card', 'admin-dashboard-tile');
+    section.classList.add('admin-card', 'admin-dashboard-tile', 'category-management-inline');
+    section.classList.remove('admin-editor-open');
+    section.dataset.adminTileReady = '1';
 
-    if (!section.classList.contains('admin-editor-open')) {
+    if (section.dataset.categoryManagerDecorated !== '1') {
       section.classList.add('is-collapsed');
+      section.dataset.categoryManagerDecorated = '1';
     }
 
     const heading = section.querySelector('h3');
-    if (heading && !section.querySelector('[data-admin-toggle]')) {
-}
+    if (heading && !heading.querySelector('[data-admin-toggle]')) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'admin-card-toggle';
+      toggle.dataset.adminToggle = '';
+      toggle.textContent = section.classList.contains('is-collapsed') ? 'Open' : 'Close';
+      heading.appendChild(toggle);
+    }
   };
 
-  const observer = new MutationObserver(decorateCategoryManagementTile);
-  observer.observe(document.body, {childList:true, subtree:true});
-  decorateCategoryManagementTile();
+  new MutationObserver(decorateCategoryManager).observe(
+    document.body, {childList:true, subtree:true}
+  );
+  decorateCategoryManager();
 }
 
 /* STEP 1 — CUSTOMER DASHBOARD */
@@ -4151,7 +4152,9 @@ function normaliseProductImageFit(value) {
   const legacy = {x:v.x, y:v.y};
   const oneView = fit => ({
     x:clamp(fit?.x ?? legacy.x),
-    y:clamp(fit?.y ?? legacy.y)
+    y:clamp(fit?.y ?? legacy.y),
+    offsetX:Math.max(-50, Math.min(50, Number(fit?.offsetX) || 0)),
+    offsetY:Math.max(-50, Math.min(50, Number(fit?.offsetY) || 0))
   });
   return {
     home:oneView(v.home),
@@ -4161,13 +4164,13 @@ function normaliseProductImageFit(value) {
 
 function productImageFitStyle(product, view = 'home') {
   const fit = normaliseProductImageFit(product?.imageFit)[view] || {x:100,y:100};
-  return `--product-fit-x:${fit.x / 100};--product-fit-y:${fit.y / 100}`;
+  return `--product-fit-x:${fit.x / 100};--product-fit-y:${fit.y / 100};--product-fit-offset-x:${fit.offsetX}%;--product-fit-offset-y:${fit.offsetY}%`;
 }
 
 function readProductImageFit(data) {
   return normaliseProductImageFit({
-    home:{x:data.homeImageFitX,y:data.homeImageFitY},
-    details:{x:data.detailsImageFitX,y:data.detailsImageFitY}
+    home:{x:data.homeImageFitX,y:data.homeImageFitY,offsetX:data.homeImageFitOffsetX,offsetY:data.homeImageFitOffsetY},
+    details:{x:data.detailsImageFitX,y:data.detailsImageFitY,offsetX:data.detailsImageFitOffsetX,offsetY:data.detailsImageFitOffsetY}
   });
 }
 
@@ -4192,6 +4195,8 @@ function addProductImageFitControls(form) {
       <div class="product-fit-frame" data-fit-frame="home">
         <img data-fit-image="home" alt="Home page image preview">
       </div>
+      <input type="hidden" name="homeImageFitOffsetX" value="${fit.home.offsetX}">
+      <input type="hidden" name="homeImageFitOffsetY" value="${fit.home.offsetY}">
       <label>Horizontal scale <output data-fit-output="home-x">${fit.home.x}%</output>
         <input type="range" name="homeImageFitX" data-fit-axis="x" data-fit-view="home"
           min="70" max="200" value="${fit.home.x}">
@@ -4206,6 +4211,8 @@ function addProductImageFitControls(form) {
       <div class="product-fit-frame" data-fit-frame="details">
         <img data-fit-image="details" alt="Details image preview">
       </div>
+      <input type="hidden" name="detailsImageFitOffsetX" value="${fit.details.offsetX}">
+      <input type="hidden" name="detailsImageFitOffsetY" value="${fit.details.offsetY}">
       <label>Horizontal scale <output data-fit-output="details-x">${fit.details.x}%</output>
         <input type="range" name="detailsImageFitX" data-fit-axis="x" data-fit-view="details"
           min="70" max="200" value="${fit.details.x}">
@@ -4257,7 +4264,9 @@ function updateProductFitPreview(panel) {
     const sy = Number(y.value) / 100;
     frame.style.setProperty('--fit-width', `${width}px`);
     frame.style.setProperty('--fit-height', `${height}px`);
-    img.style.transform = `scale(${sx}, ${sy})`;
+    const ox = Number(panel.querySelector(`[name="${view}ImageFitOffsetX"]`)?.value) || 0;
+    const oy = Number(panel.querySelector(`[name="${view}ImageFitOffsetY"]`)?.value) || 0;
+    img.style.transform = `translate(${ox}%, ${oy}%) scale(${sx}, ${sy})`;
     img.style.transformOrigin = 'center';
     panel.querySelector(`[data-fit-output="${view}-x"]`).value = `${x.value}%`;
     panel.querySelector(`[data-fit-output="${view}-y"]`).value = `${y.value}%`;
@@ -4300,3 +4309,57 @@ if (typeof openModal === 'function' && !window.__productFitControlsOpenWrapped) 
   };
 }
 setupProductFitControls();
+
+/* DRAG IMAGE POSITION IN HOME AND DETAILS FRAMES 20260928 */
+
+/* DRAG IMAGE POSITION IN HOME AND DETAILS FRAMES 20260928 */
+(() => {
+  let drag = null;
+
+  document.addEventListener('pointerdown', event => {
+    const frame = event.target.closest('.product-fit-frame');
+    const panel = frame?.closest('[data-product-fit-controls]');
+    if (!frame || !panel || event.button !== 0) return;
+
+    const view = frame.dataset.fitFrame;
+    drag = {
+      frame, panel, view, pointerId:event.pointerId,
+      x:event.clientX, y:event.clientY
+    };
+    frame.setPointerCapture(event.pointerId);
+    frame.style.cursor = 'grabbing';
+    event.preventDefault();
+  }, true);
+
+  document.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const rect = drag.frame.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const xName = `${drag.view}ImageFitOffsetX`;
+    const yName = `${drag.view}ImageFitOffsetY`;
+    const x = drag.panel.querySelector(`[name="${xName}"]`);
+    const y = drag.panel.querySelector(`[name="${yName}"]`);
+    if (!x || !y) return;
+
+    x.value = String(Math.max(-50, Math.min(50,
+      (Number(x.value) || 0) + (event.clientX - drag.x) / rect.width * 100
+    )));
+    y.value = String(Math.max(-50, Math.min(50,
+      (Number(y.value) || 0) + (event.clientY - drag.y) / rect.height * 100
+    )));
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+
+    updateProductFitPreview(drag.panel);
+    event.preventDefault();
+  }, true);
+
+  function finish(event) {
+    if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) return;
+    drag.frame.style.cursor = 'grab';
+    drag = null;
+  }
+  document.addEventListener('pointerup', finish, true);
+  document.addEventListener('pointercancel', finish, true);
+})();
