@@ -2045,15 +2045,62 @@ function renderCustomerDashboard() {
     <div class="customer-dashboard">
 
       <section class="customer-profile-card">
-        <div class="customer-profile-avatar">
-          ${escapeHtml((currentUser.name || 'U').charAt(0).toUpperCase())}
+
+        <div class="customer-profile-top">
+          <div class="customer-profile-avatar">
+            ${escapeHtml((currentUser.name || 'U').charAt(0).toUpperCase())}
+          </div>
+
+          <div class="customer-profile-identity">
+            <p class="eyebrow">MY PROFILE</p>
+            <h2>${escapeHtml(currentUser.name || 'Customer')}</h2>
+            <span class="customer-profile-role">Customer Account</span>
+          </div>
+
+          <button
+            type="button"
+            class="customer-profile-edit"
+            data-action="edit-profile"
+          >
+            Edit Profile
+          </button>
         </div>
-        <div>
-          <p class="eyebrow">MY PROFILE</p>
-          <h2>${escapeHtml(currentUser.name || 'Customer')}</h2>
-          <p>${escapeHtml(currentUser.email || currentUser.phone || '')}</p>
-          <small>${escapeHtml(currentUser.phone || '')}${currentUser.district ? ` · ${escapeHtml(currentUser.district)}` : ''}</small>
+
+        <div class="customer-profile-details">
+
+          <div class="customer-profile-detail">
+            <span>Name</span>
+            <strong>${escapeHtml(currentUser.name || 'Not provided')}</strong>
+          </div>
+
+          <div class="customer-profile-detail">
+            <span>Email</span>
+            <strong>${escapeHtml(currentUser.email || 'Not provided')}</strong>
+          </div>
+
+          <div class="customer-profile-detail">
+            <span>Phone</span>
+            <strong>${escapeHtml(currentUser.phone || 'Not provided')}</strong>
+          </div>
+
+          <div class="customer-profile-detail">
+            <span>District</span>
+            <strong>${escapeHtml(currentUser.district || 'Not provided')}</strong>
+          </div>
+
         </div>
+
+        <div class="customer-profile-shipping">
+          <div class="customer-profile-shipping-label">
+            <span class="customer-profile-location-icon">⌖</span>
+            <span>SHIPPING ADDRESS</span>
+          </div>
+
+          <div class="customer-profile-address">
+            ${escapeHtml(currentUser.address || 'Shipping address not provided')}
+          </div>
+        </div>
+
       </section>
 
       <div class="customer-dashboard-heading">
@@ -3573,9 +3620,8 @@ async function handleAdminOrderStatusChange(order, select) {
       >×</button>
 
       <div class="panel-heading">
-        <p class="eyebrow">MY PROFILE</p>
-        <h2>প্রোফাইল এডিট করুন</h2>
-        <p>আপনার নাম, মোবাইল ও shipping address পরিবর্তন করুন।</p>
+        <p class="eyebrow">EDIT PROFILE</p>
+        <p>আপনার profile information আপডেট করুন।</p>
       </div>
 
       <form id="profileEditForm" class="stack-form">
