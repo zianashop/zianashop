@@ -3544,6 +3544,282 @@ async function handleAdminOrderStatusChange(order, select) {
   }
 })();
 
+
+/* CUSTOMER PROFILE EDIT */
+(function setupCustomerProfileEdit() {
+  if (window.__ziyanaCustomerProfileEditReady) return;
+  window.__ziyanaCustomerProfileEditReady = true;
+
+  const client = window.laibaSupabase;
+
+  function ensureProfileEditModal() {
+    let modal = document.querySelector('#profileEditModal');
+
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'profileEditModal';
+      modal.className = 'modal form-modal';
+      modal.hidden = true;
+
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <button
+        type="button"
+        class="modal-close"
+        data-profile-edit-close
+        aria-label="Close"
+      >×</button>
+
+      <div class="panel-heading">
+        <p class="eyebrow">MY PROFILE</p>
+        <h2>প্রোফাইল এডিট করুন</h2>
+        <p>আপনার নাম, মোবাইল ও shipping address পরিবর্তন করুন।</p>
+      </div>
+
+      <form id="profileEditForm" class="stack-form">
+
+        <label>
+          নাম
+          <input
+            name="name"
+            type="text"
+            value="${escapeHtml(currentUser?.name || '')}"
+            placeholder="আপনার নাম"
+            autocomplete="name"
+            required
+          >
+        </label>
+
+        <label>
+          Email
+          <input
+            name="email"
+            type="email"
+            value="${escapeHtml(currentUser?.email || '')}"
+            readonly
+            disabled
+          >
+          <small>Email পরিবর্তন করা যাবে না।</small>
+        </label>
+
+        <label>
+          মোবাইল নম্বর
+          <input
+            name="phone"
+            type="tel"
+            value="${escapeHtml(currentUser?.phone || '')}"
+            placeholder="01XXXXXXXXX"
+            autocomplete="tel"
+            required
+          >
+        </label>
+
+        <label>
+          জেলা
+          <select name="district" required>
+            <option value="">জেলা নির্বাচন করুন</option>
+            ${bangladeshDistricts.map(district => `
+              <option
+                value="${escapeHtml(district)}"
+                ${currentUser?.district === district ? 'selected' : ''}
+              >
+                ${escapeHtml(district)}
+              </option>
+            `).join('')}
+          </select>
+        </label>
+
+        <label>
+          Shipping / Delivery Address
+          <textarea
+            name="address"
+            rows="4"
+            placeholder="বাড়ি/ফ্ল্যাট, রোড, এলাকা ইত্যাদি"
+            required
+          >${escapeHtml(currentUser?.address || '')}</textarea>
+        </label>
+
+        <button
+          class="primary-button"
+          type="submit"
+        >
+          পরিবর্তন Save করুন
+        </button>
+      </form>
+    `;
+
+    return modal;
+  }
+
+  async function saveCustomerProfile(form) {
+    if (!currentUser) {
+      return showToast('আগে login করুন');
+    }
+
+    const data = Object.fromEntries(new FormData(form));
+
+    const name = String(data.name || '').trim();
+    const phone = String(data.phone || '').trim();
+    const district = String(data.district || '').trim();
+    const address = String(data.address || '').trim();
+
+    if (!name) {
+      return showToast('আপনার নাম দিন');
+    }
+
+    if (!phone) {
+      return showToast('মোবাইল নম্বর দিন');
+    }
+
+    if (!district) {
+      return showToast('জেলা নির্বাচন করুন');
+    }
+
+    if (!address) {
+      return showToast('Shipping address দিন');
+    }
+
+    if (!client) {
+      return showToast('Supabase connection পাওয়া যায়নি');
+    }
+
+    if (!currentUser.id) {
+      return showToast('User ID পাওয়া যায়নি। আবার login করুন।');
+    }
+
+    const button = form.querySelector('button[type="submit"]');
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Saving...';
+    }
+
+    try {
+      const { error } = await client
+        .from('profiles')
+        .update({
+          name,
+          phone,
+          district,
+          address
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      /*
+        Email intentionally NOT included here.
+        Supabase auth email therefore remains unchanged.
+      */
+
+      currentUser = {
+        ...currentUser,
+        name,
+        phone,
+        district,
+        address
+      };
+
+      write('laiba_current_user', currentUser);
+
+      closeModal('profileEditModal');
+
+      showToast('প্রোফাইল সফলভাবে আপডেট হয়েছে ✓');
+
+      renderCustomerDashboard();
+
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      showToast(error.message || 'Profile update হয়নি');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'পরিবর্তন Save করুন';
+      }
+    }
+  }
+
+  function openProfileEdit() {
+    if (!currentUser) {
+      return renderAuth('login');
+    }
+
+    const modal = ensureProfileEditModal();
+
+    const close = modal.querySelector('[data-profile-edit-close]');
+
+    if (close && !close.dataset.bound) {
+      close.dataset.bound = '1';
+
+      close.addEventListener('click', () => {
+        closeModal('profileEditModal');
+      });
+    }
+
+    const form = modal.querySelector('#profileEditForm');
+
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = '1';
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        void saveCustomerProfile(form);
+      });
+    }
+
+    openModal('profileEditModal');
+  }
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest(
+      '[data-action="edit-profile"]'
+    );
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    openProfileEdit();
+  }, true);
+
+  /*
+    Add the Profile Edit button to the existing
+    customer dashboard action area.
+  */
+  const originalRenderCustomerDashboard = renderCustomerDashboard;
+
+  renderCustomerDashboard = function() {
+    originalRenderCustomerDashboard();
+
+    setTimeout(() => {
+      const actions = document.querySelector(
+        '.customer-dashboard-actions'
+      );
+
+      if (!actions) return;
+
+      if (actions.querySelector('[data-action="edit-profile"]')) {
+        return;
+      }
+
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.className = 'outline-button';
+      button.dataset.action = 'edit-profile';
+      button.textContent = 'প্রোফাইল এডিট করুন';
+
+      actions.prepend(button);
+    }, 0);
+  };
+
+})();
+
 /* CUSTOMER DASHBOARD ACTION CLEANUP */
 (function normalizeCustomerDashboardActions() {
   if (window.__ziyanaCustomerDashboardActionsReady) return;

@@ -6747,3 +6747,44 @@ body.ziyana-route-active #overlay{display:none!important}
 #adminModal #adminContent > .category-management-inline h3{
   margin:0!important;
 }
+
+/* CUSTOMER PROFILE EDIT */
+#profileEditModal.form-modal {
+  max-width: 560px;
+}
+
+#profileEditModal .stack-form {
+  gap: 14px;
+}
+
+#profileEditModal .stack-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+
+#profileEditModal .stack-form label small {
+  color: #777;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#profileEditModal input,
+#profileEditModal select,
+#profileEditModal textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#profileEditModal input[readonly],
+#profileEditModal input:disabled {
+  background: #f4f4f4;
+  color: #777;
+  cursor: not-allowed;
+}
+
+#profileEditModal textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
